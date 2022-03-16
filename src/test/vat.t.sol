@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity >=0.5.12;
+pragma solidity ^0.8.12;
 
 import "ds-test/test.sol";
 import "ds-token/token.sol";
@@ -31,7 +31,7 @@ contract TestVat is Vat {
 
 contract TestVow is Vow {
     constructor(address vat, address flapper, address flopper)
-        public Vow(vat, flapper, flopper) {}
+        Vow(vat, flapper, flopper) {}
     // Total deficit
     function Awe() public view returns (uint) {
         return vat.sin(address(this));
@@ -48,7 +48,7 @@ contract TestVow is Vow {
 
 contract Usr {
     Vat public vat;
-    constructor(Vat vat_) public {
+    constructor(Vat vat_) {
         vat = vat_;
     }
     function try_call(address addr, bytes calldata data) external returns (bool) {
@@ -386,7 +386,7 @@ contract JoinTest is DSTest {
         vat.mint(address(this), 100 ether);
         vat.hope(address(daiA));
         daiA.exit(urn, 60 ether);
-        dai.approve(address(daiA), uint(-1));
+        dai.approve(address(daiA), type(uint256).max);
         daiA.join(urn, 30 ether);
         assertEq(dai.balanceOf(address(this)),     30 ether);
         assertEq(vat.dai(me),                  rad(70 ether));
@@ -605,7 +605,7 @@ contract BiteTest is DSTest {
         assertEq(cat.litter(), rad(110 ether));
         assertEq(ink("gold", address(this)), 0);
         assertEq(art("gold", address(this)), 0);
-        assertEq(vow.sin(now),   rad(100 ether));
+        assertEq(vow.sin(block.timestamp),   rad(100 ether));
         assertEq(gem("gold", address(this)), 960 ether);
 
         assertEq(vat.dai(address(vow)), rad(0 ether));
@@ -618,9 +618,9 @@ contract BiteTest is DSTest {
         flip.dent(auction, 38 ether,  rad(110 ether));
         assertEq(vat.dai(address(this)),  rad(90 ether));
         assertEq(gem("gold", address(this)), 962 ether);
-        assertEq(vow.sin(now),     rad(100 ether));
+        assertEq(vow.sin(block.timestamp),     rad(100 ether));
 
-        hevm.warp(now + 4 hours);
+        hevm.warp(block.timestamp + 4 hours);
         assertEq(cat.litter(), rad(110 ether));
         flip.deal(auction);
         assertEq(cat.litter(), 0);
@@ -650,7 +650,7 @@ contract BiteTest is DSTest {
 
         assertEq(ink("gold", address(this)), 50 ether);
         assertEq(art("gold", address(this)), 75 ether);
-        assertEq(vow.sin(now), rad(75 ether));
+        assertEq(vow.sin(block.timestamp), rad(75 ether));
         assertEq(gem("gold", address(this)), 900 ether);
 
         assertEq(vat.dai(address(this)),  rad(150 ether));
@@ -666,9 +666,9 @@ contract BiteTest is DSTest {
         assertEq(cat.litter(), rad(75 ether));
         assertEq(vat.dai(address(this)), rad(75 ether));
         assertEq(gem("gold", address(this)), 925 ether);
-        assertEq(vow.sin(now), rad(75 ether));
+        assertEq(vow.sin(block.timestamp), rad(75 ether));
 
-        hevm.warp(now + 4 hours);
+        hevm.warp(block.timestamp + 4 hours);
         flip.deal(auction);
         assertEq(cat.litter(), 0);
         assertEq(gem("gold", address(this)),  950 ether);
@@ -697,7 +697,7 @@ contract BiteTest is DSTest {
         // $ bc -l <<< 'scale=27; e( l(1.08)/(60 * 60 * 24 * 365) )'
         uint256 EIGHT_PCT = 1000000002440418608258400030;
         jug.file("gold", "duty", EIGHT_PCT);
-        hevm.warp(now + 10 days);
+        hevm.warp(block.timestamp + 10 days);
         jug.drip("gold");
         (, uint rate,,,) = vat.ilks("gold");
 
@@ -718,7 +718,7 @@ contract BiteTest is DSTest {
 
         assertEq(ink("gold", address(this)), 100 ether - dink); // Taken in vat.grab
         assertEq(art("gold", address(this)), 150 ether - dart); // Taken in vat.grab
-        assertEq(vow.sin(now), dart * rate);               
+        assertEq(vow.sin(block.timestamp), dart * rate);
         assertEq(gem("gold", address(this)), 900 ether);
 
         assertEq(vat.dai(address(this)), rad(150 ether));
@@ -734,9 +734,9 @@ contract BiteTest is DSTest {
         assertEq(cat.litter(), tab);
         assertEq(vat.dai(address(this)), rad(150 ether) - tab);
         assertEq(gem("gold", address(this)), 900 ether + (dink - 25 ether));
-        assertEq(vow.sin(now), dart * rate);
+        assertEq(vow.sin(block.timestamp), dart * rate);
 
-        hevm.warp(now + 4 hours);
+        hevm.warp(block.timestamp + 4 hours);
         flip.deal(auction);
         assertEq(cat.litter(), 0);
         assertEq(gem("gold", address(this)),  900 ether + dink); // (flux another 25 wad into gem)
@@ -767,7 +767,7 @@ contract BiteTest is DSTest {
         assertEq(cat.litter(), rad(75 ether));
         assertEq(ink("gold", address(this)), 50 ether);
         assertEq(art("gold", address(this)), 75 ether);
-        assertEq(vow.sin(now), rad(75 ether));
+        assertEq(vow.sin(block.timestamp), rad(75 ether));
         assertEq(gem("gold", address(this)), 900 ether);
 
         // this bite puts us over the litterbox
@@ -799,7 +799,7 @@ contract BiteTest is DSTest {
         assertEq(cat.litter(), rad(80 ether + 1)); // room is now dusty
         assertEq(ink("gold", address(this)), 0 ether);
         assertEq(art("gold", address(this)), 0 ether);
-        assertEq(vow.sin(now), rad(80 ether + 1));
+        assertEq(vow.sin(block.timestamp), rad(80 ether + 1));
         assertEq(gem("gold", address(this)), 950 ether);
 
         // spot = tag / (par . mat)
@@ -844,7 +844,7 @@ contract BiteTest is DSTest {
         assertEq(cat.litter(), rad(75 ether));
         assertEq(ink("gold", address(this)), 50 ether);
         assertEq(art("gold", address(this)), 75 ether);
-        assertEq(vow.sin(now), rad(75 ether));
+        assertEq(vow.sin(block.timestamp), rad(75 ether));
         assertEq(gem("gold", address(this)), 900 ether);
 
         assertEq(vat.dai(address(this)), rad(150 ether));
@@ -860,13 +860,13 @@ contract BiteTest is DSTest {
         assertEq(cat.litter(), rad(75 ether));
         assertEq(vat.dai(address(this)), rad(75 ether));
         assertEq(gem("gold", address(this)), 925 ether);
-        assertEq(vow.sin(now), rad(75 ether));
+        assertEq(vow.sin(block.timestamp), rad(75 ether));
 
         // From testFail_fill_litterbox() we know another bite() here would
         // fail with a 'Cat/liquidation-limit-hit' revert.  So let's deal()
         // and then bite() again once there is more capacity in the litterbox
 
-        hevm.warp(now + 4 hours);
+        hevm.warp(block.timestamp + 4 hours);
         flip.deal(auction);
         assertEq(cat.litter(), 0);
         assertEq(gem("gold", address(this)), 950 ether);
@@ -878,7 +878,7 @@ contract BiteTest is DSTest {
         assertEq(cat.litter(), rad(75 ether));
         assertEq(ink("gold", address(this)), 0);
         assertEq(art("gold", address(this)), 0);
-        assertEq(vow.sin(now), rad(75 ether));
+        assertEq(vow.sin(block.timestamp), rad(75 ether));
         assertEq(gem("gold", address(this)), 950 ether);
 
         assertEq(vat.dai(address(this)), rad(75 ether));
@@ -894,9 +894,9 @@ contract BiteTest is DSTest {
         assertEq(cat.litter(), rad(75 ether));
         assertEq(vat.dai(address(this)), 0);
         assertEq(gem("gold", address(this)), 975 ether);
-        assertEq(vow.sin(now), rad(75 ether));
+        assertEq(vow.sin(block.timestamp), rad(75 ether));
 
-        hevm.warp(now + 4 hours);
+        hevm.warp(block.timestamp + 4 hours);
         flip.deal(auction);
         assertEq(cat.litter(), 0);
         assertEq(gem("gold", address(this)),  1000 ether);
@@ -1007,7 +1007,7 @@ contract BiteTest is DSTest {
         assertEq(cat.litter(), rad(75 ether));
         assertEq(ink("gold", address(this)), 50 ether);
         assertEq(art("gold", address(this)), 75 ether);
-        assertEq(vow.sin(now), rad(75 ether));
+        assertEq(vow.sin(block.timestamp), rad(75 ether));
         assertEq(gem("gold", address(this)), 900 ether);
 
         vat.file("gold", 'spot', 0);
@@ -1040,12 +1040,12 @@ contract BiteTest is DSTest {
         vat.file("gold", 'spot', ray(2 ether));  // now unsafe
 
         cat.file("gold", "dunk", rad(200 ether));  // => bite everything
-        assertEq(vow.sin(now), rad(  0 ether));
+        assertEq(vow.sin(block.timestamp), rad(  0 ether));
         cat.bite("gold", address(this));
-        assertEq(vow.sin(now), rad(100 ether));
+        assertEq(vow.sin(block.timestamp), rad(100 ether));
 
         assertEq(vow.Sin(), rad(100 ether));
-        vow.flog(now);
+        vow.flog(block.timestamp);
         assertEq(vow.Sin(), rad(  0 ether));
         assertEq(vow.Woe(), rad(100 ether));
         assertEq(vow.Joy(), rad(  0 ether));
@@ -1063,7 +1063,7 @@ contract BiteTest is DSTest {
         assertEq(vow.Ash(),  rad( 0 ether));
 
         assertEq(gov.balanceOf(address(this)),  100 ether);
-        hevm.warp(now + 4 hours);
+        hevm.warp(block.timestamp + 4 hours);
         gov.setOwner(address(flop));
         flop.deal(f1);
         assertEq(gov.balanceOf(address(this)), 1100 ether);
@@ -1082,7 +1082,7 @@ contract BiteTest is DSTest {
         assertEq(vat.dai(address(this)),     rad(0 ether));
         assertEq(gov.balanceOf(address(this)), 100 ether);
         flap.tend(id, rad(100 ether), 10 ether);
-        hevm.warp(now + 4 hours);
+        hevm.warp(block.timestamp + 4 hours);
         gov.setOwner(address(flap));
         flap.deal(id);
         assertEq(vat.dai(address(this)),     rad(100 ether));

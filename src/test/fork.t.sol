@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity >=0.5.12;
+pragma solidity ^0.8.12;
 
 import "ds-test/test.sol";
 import "ds-token/token.sol";
@@ -9,7 +9,7 @@ import {Vat} from '../vat.sol';
 
 contract Usr {
     Vat public vat;
-    constructor(Vat vat_) public {
+    constructor(Vat vat_) {
         vat = vat_;
     }
     function try_call(address addr, bytes calldata data) external returns (bool) {

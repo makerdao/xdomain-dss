@@ -17,7 +17,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pragma solidity >=0.5.12;
+pragma solidity ^0.8.12;
 
 // FIXME: This contract was altered compared to the production version.
 // It doesn't use LibNote anymore.
@@ -48,12 +48,15 @@ contract Jug {
     }
 
     mapping (bytes32 => Ilk) public ilks;
-    VatLike                  public vat;   // CDP Engine
+    bytes32                         a;     // Don't change the storage layout for now
     address                  public vow;   // Debt Engine
     uint256                  public base;  // Global, per-second stability fee contribution [ray]
 
+    VatLike public immutable vat;   // CDP Engine
+
+
     // --- Init ---
-    constructor(address vat_) public {
+    constructor(address vat_) {
         wards[msg.sender] = 1;
         vat = VatLike(vat_);
     }
@@ -82,30 +85,26 @@ contract Jug {
         }
       }
     }
-    uint256 constant ONE = 10 ** 27;
-    function add(uint x, uint y) internal pure returns (uint z) {
-        z = x + y;
-        require(z >= x);
-    }
+    uint256 constant RAY = 10 ** 27;
     function diff(uint x, uint y) internal pure returns (int z) {
-        z = int(x) - int(y);
+        unchecked {
+            z = int(x) - int(y);
+        }
         require(int(x) >= 0 && int(y) >= 0);
     }
     function rmul(uint x, uint y) internal pure returns (uint z) {
-        z = x * y;
-        require(y == 0 || z / y == x);
-        z = z / ONE;
+        z = x * y / RAY;
     }
 
     // --- Administration ---
     function init(bytes32 ilk) external auth {
         Ilk storage i = ilks[ilk];
         require(i.duty == 0, "Jug/ilk-already-init");
-        i.duty = ONE;
-        i.rho  = now;
+        i.duty = RAY;
+        i.rho  = block.timestamp;
     }
     function file(bytes32 ilk, bytes32 what, uint data) external auth {
-        require(now == ilks[ilk].rho, "Jug/rho-not-updated");
+        require(block.timestamp == ilks[ilk].rho, "Jug/rho-not-updated");
         if (what == "duty") ilks[ilk].duty = data;
         else revert("Jug/file-unrecognized-param");
     }
@@ -120,10 +119,9 @@ contract Jug {
 
     // --- Stability Fee Collection ---
     function drip(bytes32 ilk) external returns (uint rate) {
-        require(now >= ilks[ilk].rho, "Jug/invalid-now");
         (, uint prev) = vat.ilks(ilk);
-        rate = rmul(rpow(add(base, ilks[ilk].duty), now - ilks[ilk].rho, ONE), prev);
+        rate = rmul(rpow(base + ilks[ilk].duty, block.timestamp - ilks[ilk].rho, RAY), prev);
         vat.fold(ilk, vow, diff(rate, prev));
-        ilks[ilk].rho = now;
+        ilks[ilk].rho = block.timestamp;
     }
 }

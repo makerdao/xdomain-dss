@@ -17,7 +17,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pragma solidity >=0.5.12;
+pragma solidity ^0.8.12;
 
 // FIXME: This contract was altered compared to the production version.
 // It doesn't use LibNote anymore.
@@ -79,11 +79,16 @@ contract GemJoin {
         _;
     }
 
-    VatLike public vat;   // CDP Engine
-    bytes32 public ilk;   // Collateral Type
-    GemLike public gem;
-    uint    public dec;
-    uint    public live;  // Active Flag
+    bytes32        a;     // Don't change the storage layout for now
+    bytes32        b;     // Don't change the storage layout for now
+    bytes32        c;     // Don't change the storage layout for now
+    bytes32        d;     // Don't change the storage layout for now
+    uint256 public live;  // Active Flag
+
+    VatLike public immutable vat;   // CDP Engine
+    bytes32 public immutable ilk;   // Collateral Type
+    GemLike public immutable gem;
+    uint256 public immutable dec;
 
     // Events
     event Rely(address indexed usr);
@@ -92,7 +97,7 @@ contract GemJoin {
     event Exit(address indexed usr, uint256 wad);
     event Cage();
 
-    constructor(address vat_, bytes32 ilk_, address gem_) public {
+    constructor(address vat_, bytes32 ilk_, address gem_) {
         wards[msg.sender] = 1;
         live = 1;
         vat = VatLike(vat_);
@@ -105,14 +110,14 @@ contract GemJoin {
         live = 0;
         emit Cage();
     }
-    function join(address usr, uint wad) external {
+    function join(address usr, uint256 wad) external {
         require(live == 1, "GemJoin/not-live");
         require(int(wad) >= 0, "GemJoin/overflow");
         vat.slip(ilk, usr, int(wad));
         require(gem.transferFrom(msg.sender, address(this), wad), "GemJoin/failed-transfer");
         emit Join(usr, wad);
     }
-    function exit(address usr, uint wad) external {
+    function exit(address usr, uint256 wad) external {
         require(wad <= 2 ** 255, "GemJoin/overflow");
         vat.slip(ilk, msg.sender, -int(wad));
         require(gem.transfer(usr, wad), "GemJoin/failed-transfer");
@@ -136,9 +141,12 @@ contract DaiJoin {
         _;
     }
 
-    VatLike public vat;      // CDP Engine
-    DSTokenLike public dai;  // Stablecoin Token
-    uint    public live;     // Active Flag
+    bytes32        a;    // Don't change the storage layout for now
+    bytes32        b;    // Don't change the storage layout for now
+    uint256 public live; // Active Flag
+
+    VatLike public immutable vat;      // CDP Engine
+    DSTokenLike public immutable dai;  // Stablecoin Token
 
     // Events
     event Rely(address indexed usr);
@@ -147,7 +155,7 @@ contract DaiJoin {
     event Exit(address indexed usr, uint256 wad);
     event Cage();
 
-    constructor(address vat_, address dai_) public {
+    constructor(address vat_, address dai_) {
         wards[msg.sender] = 1;
         live = 1;
         vat = VatLike(vat_);
@@ -157,18 +165,15 @@ contract DaiJoin {
         live = 0;
         emit Cage();
     }
-    uint constant ONE = 10 ** 27;
-    function mul(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || (z = x * y) / y == x);
-    }
-    function join(address usr, uint wad) external {
-        vat.move(address(this), usr, mul(ONE, wad));
+    uint256 constant RAY = 10 ** 27;
+    function join(address usr, uint256 wad) external {
+        vat.move(address(this), usr, RAY * wad);
         dai.burn(msg.sender, wad);
         emit Join(usr, wad);
     }
-    function exit(address usr, uint wad) external {
+    function exit(address usr, uint256 wad) external {
         require(live == 1, "DaiJoin/not-live");
-        vat.move(msg.sender, address(this), mul(ONE, wad));
+        vat.move(msg.sender, address(this), RAY * wad);
         dai.mint(usr, wad);
         emit Exit(usr, wad);
     }

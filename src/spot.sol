@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pragma solidity >=0.5.12;
+pragma solidity ^0.8.12;
 
 // FIXME: This contract was altered compared to the production version.
 // It doesn't use LibNote anymore.
@@ -31,9 +31,9 @@ interface PipLike {
 
 contract Spotter {
     // --- Auth ---
-    mapping (address => uint) public wards;
-    function rely(address guy) external auth { wards[guy] = 1;  }
-    function deny(address guy) external auth { wards[guy] = 0; }
+    mapping (address => uint256) public wards;
+    function rely(address usr) external auth { wards[usr] = 1;  }
+    function deny(address usr) external auth { wards[usr] = 0; }
     modifier auth {
         require(wards[msg.sender] == 1, "Spotter/not-authorized");
         _;
@@ -47,10 +47,12 @@ contract Spotter {
 
     mapping (bytes32 => Ilk) public ilks;
 
-    VatLike public vat;  // CDP Engine
+    bytes32        a;    // Don't change the storage layout for now
     uint256 public par;  // ref per dai [ray]
 
     uint256 public live;
+
+    VatLike public immutable vat;  // CDP Engine
 
     // --- Events ---
     event Poke(
@@ -60,21 +62,18 @@ contract Spotter {
     );
 
     // --- Init ---
-    constructor(address vat_) public {
+    constructor(address vat_) {
         wards[msg.sender] = 1;
         vat = VatLike(vat_);
-        par = ONE;
+        par = RAY;
         live = 1;
     }
 
     // --- Math ---
-    uint constant ONE = 10 ** 27;
+    uint256 constant RAY = 10 ** 27;
 
-    function mul(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || (z = x * y) / y == x);
-    }
-    function rdiv(uint x, uint y) internal pure returns (uint z) {
-        z = mul(x, ONE) / y;
+    function rdiv(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        z = x * RAY / y;
     }
 
     // --- Administration ---
@@ -83,12 +82,12 @@ contract Spotter {
         if (what == "pip") ilks[ilk].pip = PipLike(pip_);
         else revert("Spotter/file-unrecognized-param");
     }
-    function file(bytes32 what, uint data) external auth {
+    function file(bytes32 what, uint256 data) external auth {
         require(live == 1, "Spotter/not-live");
         if (what == "par") par = data;
         else revert("Spotter/file-unrecognized-param");
     }
-    function file(bytes32 ilk, bytes32 what, uint data) external auth {
+    function file(bytes32 ilk, bytes32 what, uint256 data) external auth {
         require(live == 1, "Spotter/not-live");
         if (what == "mat") ilks[ilk].mat = data;
         else revert("Spotter/file-unrecognized-param");
@@ -97,7 +96,7 @@ contract Spotter {
     // --- Update value ---
     function poke(bytes32 ilk) external {
         (bytes32 val, bool has) = ilks[ilk].pip.peek();
-        uint256 spot = has ? rdiv(rdiv(mul(uint(val), 10 ** 9), par), ilks[ilk].mat) : 0;
+        uint256 spot = has ? rdiv(rdiv(uint256(val) * 10 ** 9, par), ilks[ilk].mat) : 0;
         vat.file(ilk, "spot", spot);
         emit Poke(ilk, val, spot);
     }
