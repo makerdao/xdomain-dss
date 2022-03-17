@@ -28,12 +28,12 @@ interface VatLike {
         uint256 Art,   // [wad]
         uint256 rate   // [ray]
     );
-    function fold(bytes32,address,int) external;
+    function fold(bytes32,address,int256) external;
 }
 
 contract Jug {
     // --- Auth ---
-    mapping (address => uint) public wards;
+    mapping (address => uint256) public wards;
     function rely(address usr) external auth { wards[usr] = 1; }
     function deny(address usr) external auth { wards[usr] = 0; }
     modifier auth {
@@ -62,7 +62,7 @@ contract Jug {
     }
 
     // --- Math ---
-    function rpow(uint x, uint n, uint b) internal pure returns (uint z) {
+    function _rpow(uint256 x, uint256 n, uint256 b) internal pure returns (uint256 z) {
       assembly {
         switch x case 0 {switch n case 0 {z := b} default {z := 0}}
         default {
@@ -86,15 +86,6 @@ contract Jug {
       }
     }
     uint256 constant RAY = 10 ** 27;
-    function diff(uint x, uint y) internal pure returns (int z) {
-        unchecked {
-            z = int(x) - int(y);
-        }
-        require(int(x) >= 0 && int(y) >= 0);
-    }
-    function rmul(uint x, uint y) internal pure returns (uint z) {
-        z = x * y / RAY;
-    }
 
     // --- Administration ---
     function init(bytes32 ilk) external auth {
@@ -103,12 +94,12 @@ contract Jug {
         i.duty = RAY;
         i.rho  = block.timestamp;
     }
-    function file(bytes32 ilk, bytes32 what, uint data) external auth {
+    function file(bytes32 ilk, bytes32 what, uint256 data) external auth {
         require(block.timestamp == ilks[ilk].rho, "Jug/rho-not-updated");
         if (what == "duty") ilks[ilk].duty = data;
         else revert("Jug/file-unrecognized-param");
     }
-    function file(bytes32 what, uint data) external auth {
+    function file(bytes32 what, uint256 data) external auth {
         if (what == "base") base = data;
         else revert("Jug/file-unrecognized-param");
     }
@@ -118,10 +109,10 @@ contract Jug {
     }
 
     // --- Stability Fee Collection ---
-    function drip(bytes32 ilk) external returns (uint rate) {
-        (, uint prev) = vat.ilks(ilk);
-        rate = rmul(rpow(base + ilks[ilk].duty, block.timestamp - ilks[ilk].rho, RAY), prev);
-        vat.fold(ilk, vow, diff(rate, prev));
+    function drip(bytes32 ilk) external returns (uint256 rate) {
+        (, uint256 prev) = vat.ilks(ilk);
+        rate = _rpow(base + ilks[ilk].duty, block.timestamp - ilks[ilk].rho, RAY) * prev / RAY;
+        vat.fold(ilk, vow, int256(rate) - int256(prev));
         ilks[ilk].rho = block.timestamp;
     }
 }

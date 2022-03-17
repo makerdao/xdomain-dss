@@ -72,10 +72,6 @@ contract Spotter {
     // --- Math ---
     uint256 constant RAY = 10 ** 27;
 
-    function rdiv(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        z = x * RAY / y;
-    }
-
     // --- Administration ---
     function file(bytes32 ilk, bytes32 what, address pip_) external auth {
         require(live == 1, "Spotter/not-live");
@@ -96,7 +92,9 @@ contract Spotter {
     // --- Update value ---
     function poke(bytes32 ilk) external {
         (bytes32 val, bool has) = ilks[ilk].pip.peek();
-        uint256 spot = has ? rdiv(rdiv(uint256(val) * 10 ** 9, par), ilks[ilk].mat) : 0;
+        uint256 spot = has
+                        ? (uint256(val) * 10 ** 9 * RAY / par) * RAY / ilks[ilk].mat
+                        : 0;
         vat.file(ilk, "spot", spot);
         emit Poke(ilk, val, spot);
     }

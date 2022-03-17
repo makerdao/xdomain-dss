@@ -84,7 +84,7 @@ contract Pot {
 
     // --- Math ---
     uint256 constant RAY = 10 ** 27;
-    function rpow(uint256 x, uint256 n, uint256 base) internal pure returns (uint256 z) {
+    function _rpow(uint256 x, uint256 n, uint256 base) internal pure returns (uint256 z) {
         assembly {
             switch x case 0 {switch n case 0 {z := base} default {z := 0}}
             default {
@@ -108,10 +108,6 @@ contract Pot {
         }
     }
 
-    function rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        z = x * y / RAY;
-    }
-
     // --- Administration ---
     function file(bytes32 what, uint256 data) external auth {
         require(live == 1, "Pot/not-live");
@@ -132,7 +128,7 @@ contract Pot {
 
     // --- Savings Rate Accumulation ---
     function drip() external returns (uint256 tmp) {
-        tmp = rmul(rpow(dsr, block.timestamp - rho, RAY), chi);
+        tmp = _rpow(dsr, block.timestamp - rho, RAY) * chi / RAY;
         uint256 chi_ = tmp - chi;
         chi = tmp;
         rho = block.timestamp;

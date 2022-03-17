@@ -71,26 +71,11 @@ contract Vat {
     }
 
     // --- Math ---
-    function add(uint256 x, int256 y) internal pure returns (uint256 z) {
-        unchecked {
-            z = x + uint256(y);
-        }
-        require(y >= 0 || z <= x);
-        require(y <= 0 || z >= x);
+    function _add(uint256 x, int256 y) internal pure returns (uint256 z) {
+        z = y >= 0 ? x + uint256(y) : x - uint256(-y);
     }
-    function sub(uint256 x, int256 y) internal pure returns (uint256 z) {
-        unchecked {
-            z = x - uint256(y);
-        }
-        require(y <= 0 || z <= x);
-        require(y >= 0 || z >= x);
-    }
-    function mul(uint256 x, int256 y) internal pure returns (int256 z) {
-        unchecked {
-            z = int256(x) * y;
-        }
-        require(int256(x) >= 0);
-        require(y == 0 || z / y == int256(x));
+    function _sub(uint256 x, int256 y) internal pure returns (uint256 z) {
+        z = y >= 0 ? x - uint256(y) : x + uint256(-y);
     }
 
     // --- Administration ---
@@ -116,7 +101,7 @@ contract Vat {
 
     // --- Fungibility ---
     function slip(bytes32 ilk, address usr, int256 wad) external auth {
-        gem[ilk][usr] = add(gem[ilk][usr], wad);
+        gem[ilk][usr] = _add(gem[ilk][usr], wad);
     }
     function flux(bytes32 ilk, address src, address dst, uint256 wad) external {
         require(wish(src, msg.sender), "Vat/not-allowed");
@@ -146,13 +131,13 @@ contract Vat {
         // ilk has been initialised
         require(ilk.rate != 0, "Vat/ilk-not-init");
 
-        urn.ink = add(urn.ink, dink);
-        urn.art = add(urn.art, dart);
-        ilk.Art = add(ilk.Art, dart);
+        urn.ink = _add(urn.ink, dink);
+        urn.art = _add(urn.art, dart);
+        ilk.Art = _add(ilk.Art, dart);
 
-        int256 dtab = mul(ilk.rate, dart);
+        int256 dtab = int256(ilk.rate) * dart;
         uint256 tab = ilk.rate * urn.art;
-        debt     = add(debt, dtab);
+        debt     = _add(debt, dtab);
 
         // either debt has decreased, or debt ceilings are not exceeded
         require(either(dart <= 0, both(ilk.Art * ilk.rate <= ilk.line, debt <= Line)), "Vat/ceiling-exceeded");
@@ -169,8 +154,8 @@ contract Vat {
         // urn has no debt, or a non-dusty amount
         require(either(urn.art == 0, tab >= ilk.dust), "Vat/dust");
 
-        gem[i][v] = sub(gem[i][v], dink);
-        dai[w]    = add(dai[w],    dtab);
+        gem[i][v] = _sub(gem[i][v], dink);
+        dai[w]    = _add(dai[w],    dtab);
 
         urns[i][u] = urn;
         ilks[i]    = ilk;
@@ -181,10 +166,10 @@ contract Vat {
         Urn storage v = urns[ilk][dst];
         Ilk storage i = ilks[ilk];
 
-        u.ink = sub(u.ink, dink);
-        u.art = sub(u.art, dart);
-        v.ink = add(v.ink, dink);
-        v.art = add(v.art, dart);
+        u.ink = _sub(u.ink, dink);
+        u.art = _sub(u.art, dart);
+        v.ink = _add(v.ink, dink);
+        v.art = _add(v.art, dart);
 
         uint256 utab = u.art * i.rate;
         uint256 vtab = v.art * i.rate;
@@ -205,15 +190,15 @@ contract Vat {
         Urn storage urn = urns[i][u];
         Ilk storage ilk = ilks[i];
 
-        urn.ink = add(urn.ink, dink);
-        urn.art = add(urn.art, dart);
-        ilk.Art = add(ilk.Art, dart);
+        urn.ink = _add(urn.ink, dink);
+        urn.art = _add(urn.art, dart);
+        ilk.Art = _add(ilk.Art, dart);
 
-        int256 dtab = mul(ilk.rate, dart);
+        int256 dtab = int256(ilk.rate) * dart;
 
-        gem[i][v] = sub(gem[i][v], dink);
-        sin[w]    = sub(sin[w],    dtab);
-        vice      = sub(vice,      dtab);
+        gem[i][v] = _sub(gem[i][v], dink);
+        sin[w]    = _sub(sin[w],    dtab);
+        vice      = _sub(vice,      dtab);
     }
 
     // --- Settlement ---
@@ -235,9 +220,9 @@ contract Vat {
     function fold(bytes32 i, address u, int256 rate) external auth {
         require(live == 1, "Vat/not-live");
         Ilk storage ilk = ilks[i];
-        ilk.rate    = add(ilk.rate, rate);
-        int256 rad  = mul(ilk.Art, rate);
-        dai[u]      = add(dai[u], rad);
-        debt        = add(debt,   rad);
+        ilk.rate    = _add(ilk.rate, rate);
+        int256 rad  = int256(ilk.Art) * rate;
+        dai[u]      = _add(dai[u], rad);
+        debt        = _add(debt,   rad);
     }
 }
