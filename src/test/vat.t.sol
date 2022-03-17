@@ -119,14 +119,6 @@ contract FrobTest is DSTest {
     function gem(bytes32 ilk, address urn) internal view returns (uint) {
         return vat.gem(ilk, urn);
     }
-    function ink(bytes32 ilk, address urn) internal view returns (uint) {
-        (uint256 ink_, uint256 art_) = vat.urns(ilk, urn); art_;
-        return ink_;
-    }
-    function art(bytes32 ilk, address urn) internal view returns (uint) {
-        (uint256 ink_, uint256 art_) = vat.urns(ilk, urn); ink_;
-        return art_;
-    }
 
     function test_setup() public {
         assertEq(gold.balanceOf(address(gemA)), 1000 ether);
@@ -145,13 +137,13 @@ contract FrobTest is DSTest {
         assertEq(gold.balanceOf(address(gemA)),   1250 ether);
     }
     function test_lock() public {
-        assertEq(ink("gold", address(this)),    0 ether);
+        assertEq(vat.ink("gold", address(this)),    0 ether);
         assertEq(gem("gold", address(this)), 1000 ether);
         vat.frob("gold", me, me, me, 6 ether, 0);
-        assertEq(ink("gold", address(this)),   6 ether);
+        assertEq(vat.ink("gold", address(this)),   6 ether);
         assertEq(gem("gold", address(this)), 994 ether);
         vat.frob("gold", me, me, me, -6 ether, 0);
-        assertEq(ink("gold", address(this)),    0 ether);
+        assertEq(vat.ink("gold", address(this)),    0 ether);
         assertEq(gem("gold", address(this)), 1000 ether);
     }
     function test_calm() public {
