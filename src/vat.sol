@@ -52,6 +52,25 @@ contract Vat {
     uint256 public Line;  // Total Debt Ceiling  [rad]
     uint256 public live;  // Active Flag
 
+    // --- Events ---
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event Init(bytes32 indexed ilk);
+    event File(bytes32 indexed what, uint256 data);
+    event File(bytes32 indexed ilk, bytes32 indexed what, uint256 data);
+    event Cage();
+    event Hope(address indexed from, address indexed to);
+    event Nope(address indexed from, address indexed to);
+    event Slip(bytes32 indexed ilk, address indexed usr, int256 wad);
+    event Flux(bytes32 indexed ilk, address indexed src, address indexed dst, uint256 wad);
+    event Move(address indexed src, address indexed dst, uint256 rad);
+    event Frob(bytes32 indexed i, address indexed u, address v, address w, int256 dink, int256 dart);
+    event Fork(bytes32 indexed ilk, address indexed src, address indexed dst, int256 dink, int256 dart);
+    event Grab(bytes32 indexed i, address indexed u, address v, address w, int256 dink, int256 dart);
+    event Heal(address indexed u, uint256 rad);
+    event Suck(address indexed u, address indexed v, uint256 rad);
+    event Fold(bytes32 indexed i, address indexed u, int256 rate);
+
     modifier auth {
         require(wards[msg.sender] == 1, "Vat/not-authorized");
         _;
@@ -65,6 +84,7 @@ contract Vat {
     constructor() {
         wards[msg.sender] = 1;
         live = 1;
+        emit Rely(msg.sender);
     }
 
     // --- Math ---
@@ -80,22 +100,26 @@ contract Vat {
     function rely(address usr) external auth {
         require(live == 1, "Vat/not-live");
         wards[usr] = 1;
+        emit Rely(usr);
     }
 
     function deny(address usr) external auth {
         require(live == 1, "Vat/not-live");
         wards[usr] = 0;
+        emit Deny(usr);
     }
 
     function init(bytes32 ilk) external auth {
         require(ilks[ilk].rate == 0, "Vat/ilk-already-init");
         ilks[ilk].rate = 10 ** 27;
+        emit Init(ilk);
     }
 
     function file(bytes32 what, uint256 data) external auth {
         require(live == 1, "Vat/not-live");
         if (what == "Line") Line = data;
         else revert("Vat/file-unrecognized-param");
+        emit File(what, data);
     }
 
     function file(bytes32 ilk, bytes32 what, uint256 data) external auth {
@@ -104,36 +128,43 @@ contract Vat {
         else if (what == "line") ilks[ilk].line = data;
         else if (what == "dust") ilks[ilk].dust = data;
         else revert("Vat/file-unrecognized-param");
+        emit File(ilk, what, data);
     }
 
     function cage() external auth {
         live = 0;
+        emit Cage();
     }
 
     // --- Allowance ---
     function hope(address usr) external {
         can[msg.sender][usr] = 1;
+        emit Hope(msg.sender, usr);
     }
 
     function nope(address usr) external {
         can[msg.sender][usr] = 0;
+        emit Nope(msg.sender, usr);
     }
 
     // --- Fungibility ---
     function slip(bytes32 ilk, address usr, int256 wad) external auth {
         gem[ilk][usr] = _add(gem[ilk][usr], wad);
+        emit Slip(ilk, usr, wad);
     }
 
     function flux(bytes32 ilk, address src, address dst, uint256 wad) external {
         require(wish(src, msg.sender), "Vat/not-allowed");
         gem[ilk][src] = gem[ilk][src] - wad;
         gem[ilk][dst] = gem[ilk][dst] + wad;
+        emit Flux(ilk, src, dst, wad);
     }
 
     function move(address src, address dst, uint256 rad) external {
         require(wish(src, msg.sender), "Vat/not-allowed");
         dai[src] = dai[src] - rad;
         dai[dst] = dai[dst] + rad;
+        emit Move(src, dst, rad);
     }
 
     function either(bool x, bool y) internal pure returns (bool z) {
@@ -182,6 +213,8 @@ contract Vat {
 
         urns[i][u] = urn;
         ilks[i]    = ilk;
+
+        emit Frob(i, u, v, w, dink, dart);
     }
 
     // --- CDP Fungibility ---
@@ -208,6 +241,8 @@ contract Vat {
         // both sides non-dusty
         require(either(utab >= i.dust, u.art == 0), "Vat/dust-src");
         require(either(vtab >= i.dust, v.art == 0), "Vat/dust-dst");
+
+        emit Fork(ilk, src, dst, dink, dart);
     }
 
     // --- CDP Confiscation ---
@@ -224,6 +259,8 @@ contract Vat {
         gem[i][v] = _sub(gem[i][v], dink);
         sin[w]    = _sub(sin[w],    dtab);
         vice      = _sub(vice,      dtab);
+
+        emit Grab(i, u, v, w, dink, dart);
     }
 
     // --- Settlement ---
@@ -233,6 +270,8 @@ contract Vat {
         dai[u] = dai[u] - rad;
         vice   = vice   - rad;
         debt   = debt   - rad;
+
+        emit Heal(msg.sender, rad);
     }
 
     function suck(address u, address v, uint256 rad) external auth {
@@ -240,6 +279,8 @@ contract Vat {
         dai[v] = dai[v] + rad;
         vice   = vice   + rad;
         debt   = debt   + rad;
+
+        emit Suck(u, v, rad);
     }
 
     // --- Rates ---
@@ -250,5 +291,7 @@ contract Vat {
         int256 rad  = int256(ilk.Art) * rate;
         dai[u]      = _add(dai[u], rad);
         debt        = _add(debt,   rad);
+
+        emit Fold(i, u, rate);
     }
 }

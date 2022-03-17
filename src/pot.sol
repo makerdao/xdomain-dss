@@ -66,6 +66,16 @@ contract Pot {
     VatLike public immutable vat;   // CDP Engine
     uint256 constant RAY = 10 ** 27;
 
+    // --- Events ---
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event File(bytes32 indexed what, uint256 data);
+    event File(bytes32 indexed what, address data);
+    event Cage();
+    event Drip();
+    event Join(address indexed usr, uint256 wad);
+    event Exit(address indexed usr, uint256 wad);
+
     modifier auth {
         require(wards[msg.sender] == 1, "Pot/not-authorized");
         _;
@@ -79,6 +89,7 @@ contract Pot {
         chi = RAY;
         rho = block.timestamp;
         live = 1;
+        emit Rely(msg.sender);
     }
 
     // --- Math ---
@@ -109,10 +120,12 @@ contract Pot {
     // --- Administration ---
     function rely(address usr) external auth {
         wards[usr] = 1;
+        emit Rely(usr);
     }
 
     function deny(address usr) external auth {
         wards[usr] = 0;
+        emit Deny(usr);
     }
 
     function file(bytes32 what, uint256 data) external auth {
@@ -120,16 +133,19 @@ contract Pot {
         require(block.timestamp == rho, "Pot/rho-not-updated");
         if (what == "dsr") dsr = data;
         else revert("Pot/file-unrecognized-param");
+        emit File(what, data);
     }
 
-    function file(bytes32 what, address addr) external auth {
-        if (what == "vow") vow = addr;
+    function file(bytes32 what, address data) external auth {
+        if (what == "vow") vow = data;
         else revert("Pot/file-unrecognized-param");
+        emit File(what, data);
     }
 
     function cage() external auth {
         live = 0;
         dsr = RAY;
+        emit Cage();
     }
 
     // --- Savings Rate Accumulation ---
@@ -139,6 +155,7 @@ contract Pot {
         chi = tmp;
         rho = block.timestamp;
         vat.suck(address(vow), address(this), Pie * chi_);
+        emit Drip();
     }
 
     // --- Savings Dai Management ---
@@ -147,11 +164,13 @@ contract Pot {
         pie[msg.sender] = pie[msg.sender] + wad;
         Pie             = Pie             + wad;
         vat.move(msg.sender, address(this), chi * wad);
+        emit Join(msg.sender, wad);
     }
 
     function exit(uint256 wad) external {
         pie[msg.sender] = pie[msg.sender] - wad;
         Pie             = Pie             - wad;
         vat.move(address(this), msg.sender, chi * wad);
+        emit Exit(msg.sender, wad);
     }
 }

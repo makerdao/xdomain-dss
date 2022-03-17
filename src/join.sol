@@ -81,9 +81,9 @@ contract GemJoin {
     // --- Events ---
     event Rely(address indexed usr);
     event Deny(address indexed usr);
+    event Cage();
     event Join(address indexed usr, uint256 wad);
     event Exit(address indexed usr, uint256 wad);
-    event Cage();
 
     modifier auth {
         require(wards[msg.sender] == 1, "GemJoin/not-authorized");
@@ -148,9 +148,9 @@ contract DaiJoin {
     // --- Events ---
     event Rely(address indexed usr);
     event Deny(address indexed usr);
+    event Cage();
     event Join(address indexed usr, uint256 wad);
     event Exit(address indexed usr, uint256 wad);
-    event Cage();
 
     modifier auth {
         require(wards[msg.sender] == 1, "DaiJoin/not-authorized");
@@ -162,6 +162,7 @@ contract DaiJoin {
         live = 1;
         vat = VatLike(vat_);
         dai = DSTokenLike(dai_);
+        emit Rely(msg.sender);
     }
 
     // --- Administration ---

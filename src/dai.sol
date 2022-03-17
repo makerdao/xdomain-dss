@@ -31,10 +31,11 @@ contract Dai {
     mapping (address => mapping (address => uint256)) public allowance;
     mapping (address => uint256)                      public nonces;
 
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-    event Transfer(address indexed from, address indexed to, uint256 value);
+    // --- Events ---
     event Rely(address indexed usr);
     event Deny(address indexed usr);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+    event Transfer(address indexed from, address indexed to, uint256 value);
 
     // --- EIP712 niceties ---
     uint256 public immutable deploymentChainId;

@@ -48,6 +48,15 @@ contract Jug {
     VatLike public immutable vat;   // CDP Engine
     uint256 constant RAY = 10 ** 27;
 
+    // --- Events ---
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event Init(bytes32 indexed ilk);
+    event File(bytes32 indexed ilk, bytes32 indexed what, uint256 data);
+    event File(bytes32 indexed what, uint256 data);
+    event File(bytes32 indexed what, address data);
+    event Drip(bytes32 indexed ilk);
+
     modifier auth {
         require(wards[msg.sender] == 1, "Jug/not-authorized");
         _;
@@ -57,6 +66,7 @@ contract Jug {
     constructor(address vat_) {
         wards[msg.sender] = 1;
         vat = VatLike(vat_);
+        emit Rely(msg.sender);
     }
 
     // --- Math ---
@@ -87,10 +97,12 @@ contract Jug {
     // --- Administration ---
     function rely(address usr) external auth {
         wards[usr] = 1;
+        emit Rely(usr);
     }
 
     function deny(address usr) external auth {
         wards[usr] = 0;
+        emit Deny(usr);
     }
 
     function init(bytes32 ilk) external auth {
@@ -98,22 +110,26 @@ contract Jug {
         require(i.duty == 0, "Jug/ilk-already-init");
         i.duty = RAY;
         i.rho  = block.timestamp;
+        emit Init(ilk);
     }
 
     function file(bytes32 ilk, bytes32 what, uint256 data) external auth {
         require(block.timestamp == ilks[ilk].rho, "Jug/rho-not-updated");
         if (what == "duty") ilks[ilk].duty = data;
         else revert("Jug/file-unrecognized-param");
+        emit File(ilk, what, data);
     }
 
     function file(bytes32 what, uint256 data) external auth {
         if (what == "base") base = data;
         else revert("Jug/file-unrecognized-param");
+        emit File(what, data);
     }
 
     function file(bytes32 what, address data) external auth {
         if (what == "vow") vow = data;
         else revert("Jug/file-unrecognized-param");
+        emit File(what, data);
     }
 
     // --- Stability Fee Collection ---
@@ -122,5 +138,6 @@ contract Jug {
         rate = _rpow(base + ilks[ilk].duty, block.timestamp - ilks[ilk].rho, RAY) * prev / RAY;
         vat.fold(ilk, vow, int256(rate) - int256(prev));
         ilks[ilk].rho = block.timestamp;
+        emit Drip(ilk);
     }
 }
