@@ -48,16 +48,9 @@ interface VatLike {
 }
 
 contract Pot {
-    // --- Auth ---
-    mapping (address => uint256) public wards;
-    function rely(address usr) external auth { wards[usr] = 1; }
-    function deny(address usr) external auth { wards[usr] = 0; }
-    modifier auth {
-        require(wards[msg.sender] == 1, "Pot/not-authorized");
-        _;
-    }
-
     // --- Data ---
+    mapping (address => uint256) public wards;
+
     mapping (address => uint256) public pie;  // Normalised Savings Dai [wad]
 
     uint256 public Pie;   // Total Normalised Savings Dai  [wad]
@@ -71,6 +64,12 @@ contract Pot {
     uint256 public live;  // Active Flag
 
     VatLike public immutable vat;   // CDP Engine
+    uint256 constant RAY = 10 ** 27;
+
+    modifier auth {
+        require(wards[msg.sender] == 1, "Pot/not-authorized");
+        _;
+    }
 
     // --- Init ---
     constructor(address vat_) {
@@ -83,7 +82,6 @@ contract Pot {
     }
 
     // --- Math ---
-    uint256 constant RAY = 10 ** 27;
     function _rpow(uint256 x, uint256 n, uint256 base) internal pure returns (uint256 z) {
         assembly {
             switch x case 0 {switch n case 0 {z := base} default {z := 0}}
@@ -109,6 +107,14 @@ contract Pot {
     }
 
     // --- Administration ---
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+    }
+
     function file(bytes32 what, uint256 data) external auth {
         require(live == 1, "Pot/not-live");
         require(block.timestamp == rho, "Pot/rho-not-updated");

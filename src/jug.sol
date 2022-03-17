@@ -32,16 +32,9 @@ interface VatLike {
 }
 
 contract Jug {
-    // --- Auth ---
-    mapping (address => uint256) public wards;
-    function rely(address usr) external auth { wards[usr] = 1; }
-    function deny(address usr) external auth { wards[usr] = 0; }
-    modifier auth {
-        require(wards[msg.sender] == 1, "Jug/not-authorized");
-        _;
-    }
-
     // --- Data ---
+    mapping (address => uint256) public wards;
+
     struct Ilk {
         uint256 duty;  // Collateral-specific, per-second stability fee contribution [ray]
         uint256  rho;  // Time of last drip [unix epoch time]
@@ -53,7 +46,12 @@ contract Jug {
     uint256                  public base;  // Global, per-second stability fee contribution [ray]
 
     VatLike public immutable vat;   // CDP Engine
+    uint256 constant RAY = 10 ** 27;
 
+    modifier auth {
+        require(wards[msg.sender] == 1, "Jug/not-authorized");
+        _;
+    }
 
     // --- Init ---
     constructor(address vat_) {
@@ -85,24 +83,34 @@ contract Jug {
         }
       }
     }
-    uint256 constant RAY = 10 ** 27;
 
     // --- Administration ---
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+    }
+
     function init(bytes32 ilk) external auth {
         Ilk storage i = ilks[ilk];
         require(i.duty == 0, "Jug/ilk-already-init");
         i.duty = RAY;
         i.rho  = block.timestamp;
     }
+
     function file(bytes32 ilk, bytes32 what, uint256 data) external auth {
         require(block.timestamp == ilks[ilk].rho, "Jug/rho-not-updated");
         if (what == "duty") ilks[ilk].duty = data;
         else revert("Jug/file-unrecognized-param");
     }
+
     function file(bytes32 what, uint256 data) external auth {
         if (what == "base") base = data;
         else revert("Jug/file-unrecognized-param");
     }
+
     function file(bytes32 what, address data) external auth {
         if (what == "vow") vow = data;
         else revert("Jug/file-unrecognized-param");

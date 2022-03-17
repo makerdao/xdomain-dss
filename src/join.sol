@@ -64,20 +64,8 @@ interface VatLike {
 */
 
 contract GemJoin {
-    // --- Auth ---
+    // --- Data ---
     mapping (address => uint) public wards;
-    function rely(address usr) external auth {
-        wards[usr] = 1;
-        emit Rely(usr);
-    }
-    function deny(address usr) external auth {
-        wards[usr] = 0;
-        emit Deny(usr);
-    }
-    modifier auth {
-        require(wards[msg.sender] == 1, "GemJoin/not-authorized");
-        _;
-    }
 
     bytes32        a;     // Don't change the storage layout for now
     bytes32        b;     // Don't change the storage layout for now
@@ -90,12 +78,17 @@ contract GemJoin {
     GemLike public immutable gem;
     uint256 public immutable dec;
 
-    // Events
+    // --- Events ---
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event Join(address indexed usr, uint256 wad);
     event Exit(address indexed usr, uint256 wad);
     event Cage();
+
+    modifier auth {
+        require(wards[msg.sender] == 1, "GemJoin/not-authorized");
+        _;
+    }
 
     constructor(address vat_, bytes32 ilk_, address gem_) {
         wards[msg.sender] = 1;
@@ -106,10 +99,24 @@ contract GemJoin {
         dec = gem.decimals();
         emit Rely(msg.sender);
     }
+
+    // --- Administration ---
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
     function cage() external auth {
         live = 0;
         emit Cage();
     }
+
+    // --- User's functions ---
     function join(address usr, uint256 wad) external {
         require(live == 1, "GemJoin/not-live");
         require(int(wad) >= 0, "GemJoin/overflow");
@@ -117,6 +124,7 @@ contract GemJoin {
         require(gem.transferFrom(msg.sender, address(this), wad), "GemJoin/failed-transfer");
         emit Join(usr, wad);
     }
+
     function exit(address usr, uint256 wad) external {
         require(wad <= 2 ** 255, "GemJoin/overflow");
         vat.slip(ilk, msg.sender, -int(wad));
@@ -126,20 +134,8 @@ contract GemJoin {
 }
 
 contract DaiJoin {
-    // --- Auth ---
+    // --- Data ---
     mapping (address => uint) public wards;
-    function rely(address usr) external auth {
-        wards[usr] = 1;
-        emit Rely(usr);
-    }
-    function deny(address usr) external auth {
-        wards[usr] = 0;
-        emit Deny(usr);
-    }
-    modifier auth {
-        require(wards[msg.sender] == 1, "DaiJoin/not-authorized");
-        _;
-    }
 
     bytes32        a;    // Don't change the storage layout for now
     bytes32        b;    // Don't change the storage layout for now
@@ -147,13 +143,19 @@ contract DaiJoin {
 
     VatLike public immutable vat;      // CDP Engine
     DSTokenLike public immutable dai;  // Stablecoin Token
+    uint256 constant RAY = 10 ** 27;
 
-    // Events
+    // --- Events ---
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event Join(address indexed usr, uint256 wad);
     event Exit(address indexed usr, uint256 wad);
     event Cage();
+
+    modifier auth {
+        require(wards[msg.sender] == 1, "DaiJoin/not-authorized");
+        _;
+    }
 
     constructor(address vat_, address dai_) {
         wards[msg.sender] = 1;
@@ -161,16 +163,30 @@ contract DaiJoin {
         vat = VatLike(vat_);
         dai = DSTokenLike(dai_);
     }
+
+    // --- Administration ---
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
     function cage() external auth {
         live = 0;
         emit Cage();
     }
-    uint256 constant RAY = 10 ** 27;
+
+    // --- User's functions ---
     function join(address usr, uint256 wad) external {
         vat.move(address(this), usr, RAY * wad);
         dai.burn(msg.sender, wad);
         emit Join(usr, wad);
     }
+
     function exit(address usr, uint256 wad) external {
         require(live == 1, "DaiJoin/not-live");
         vat.move(msg.sender, address(this), RAY * wad);

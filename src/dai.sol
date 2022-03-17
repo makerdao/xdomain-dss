@@ -18,21 +18,7 @@
 pragma solidity ^0.8.12;
 
 contract Dai {
-
-    // --- Auth ---
     mapping (address => uint256) public wards;
-    function rely(address usr) external auth {
-        wards[usr] = 1;
-        emit Rely(usr);
-    }
-    function deny(address usr) external auth {
-        wards[usr] = 0;
-        emit Deny(usr);
-    }
-    modifier auth {
-        require(wards[msg.sender] == 1, "Dai/not-authorized");
-        _;
-    }
 
     // --- ERC20 Data ---
     string  public constant name     = "Dai Stablecoin";
@@ -55,6 +41,11 @@ contract Dai {
     bytes32 private immutable _DOMAIN_SEPARATOR;
     bytes32 public constant PERMIT_TYPEHASH = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
+    modifier auth {
+        require(wards[msg.sender] == 1, "Dai/not-authorized");
+        _;
+    }
+
     constructor() {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
@@ -76,10 +67,22 @@ contract Dai {
             )
         );
     }
+
     function DOMAIN_SEPARATOR() external view returns (bytes32) {
         uint256 chainId;
         assembly {chainId := chainid()}
         return chainId == deploymentChainId ? _DOMAIN_SEPARATOR : _calculateDomainSeparator(chainId);
+    }
+
+    // --- Administration ---
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
     }
 
     // --- ERC20 Mutations ---

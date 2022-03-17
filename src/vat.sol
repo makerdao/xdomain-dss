@@ -24,23 +24,11 @@ pragma solidity ^0.8.12;
 // New deployments of this contract will need to include custom events (TO DO).
 
 contract Vat {
-    // --- Auth ---
+    // --- Data ---
     mapping (address => uint256) public wards;
-    function rely(address usr) external auth { require(live == 1, "Vat/not-live"); wards[usr] = 1; }
-    function deny(address usr) external auth { require(live == 1, "Vat/not-live"); wards[usr] = 0; }
-    modifier auth {
-        require(wards[msg.sender] == 1, "Vat/not-authorized");
-        _;
-    }
 
     mapping(address => mapping (address => uint256)) public can;
-    function hope(address usr) external { can[msg.sender][usr] = 1; }
-    function nope(address usr) external { can[msg.sender][usr] = 0; }
-    function wish(address bit, address usr) internal view returns (bool) {
-        return either(bit == usr, can[bit][usr] == 1);
-    }
 
-    // --- Data ---
     struct Ilk {
         uint256 Art;   // Total Normalised Debt     [wad]
         uint256 rate;  // Accumulated Rates         [ray]
@@ -64,6 +52,15 @@ contract Vat {
     uint256 public Line;  // Total Debt Ceiling  [rad]
     uint256 public live;  // Active Flag
 
+    modifier auth {
+        require(wards[msg.sender] == 1, "Vat/not-authorized");
+        _;
+    }
+
+    function wish(address bit, address usr) internal view returns (bool) {
+        return either(bit == usr, can[bit][usr] == 1);
+    }
+
     // --- Init ---
     constructor() {
         wards[msg.sender] = 1;
@@ -74,20 +71,33 @@ contract Vat {
     function _add(uint256 x, int256 y) internal pure returns (uint256 z) {
         z = y >= 0 ? x + uint256(y) : x - uint256(-y);
     }
+
     function _sub(uint256 x, int256 y) internal pure returns (uint256 z) {
         z = y >= 0 ? x - uint256(y) : x + uint256(-y);
     }
 
     // --- Administration ---
+    function rely(address usr) external auth {
+        require(live == 1, "Vat/not-live");
+        wards[usr] = 1;
+    }
+
+    function deny(address usr) external auth {
+        require(live == 1, "Vat/not-live");
+        wards[usr] = 0;
+    }
+
     function init(bytes32 ilk) external auth {
         require(ilks[ilk].rate == 0, "Vat/ilk-already-init");
         ilks[ilk].rate = 10 ** 27;
     }
+
     function file(bytes32 what, uint256 data) external auth {
         require(live == 1, "Vat/not-live");
         if (what == "Line") Line = data;
         else revert("Vat/file-unrecognized-param");
     }
+
     function file(bytes32 ilk, bytes32 what, uint256 data) external auth {
         require(live == 1, "Vat/not-live");
         if (what == "spot") ilks[ilk].spot = data;
@@ -95,19 +105,31 @@ contract Vat {
         else if (what == "dust") ilks[ilk].dust = data;
         else revert("Vat/file-unrecognized-param");
     }
+
     function cage() external auth {
         live = 0;
+    }
+
+    // --- Allowance ---
+    function hope(address usr) external {
+        can[msg.sender][usr] = 1;
+    }
+
+    function nope(address usr) external {
+        can[msg.sender][usr] = 0;
     }
 
     // --- Fungibility ---
     function slip(bytes32 ilk, address usr, int256 wad) external auth {
         gem[ilk][usr] = _add(gem[ilk][usr], wad);
     }
+
     function flux(bytes32 ilk, address src, address dst, uint256 wad) external {
         require(wish(src, msg.sender), "Vat/not-allowed");
         gem[ilk][src] = gem[ilk][src] - wad;
         gem[ilk][dst] = gem[ilk][dst] + wad;
     }
+
     function move(address src, address dst, uint256 rad) external {
         require(wish(src, msg.sender), "Vat/not-allowed");
         dai[src] = dai[src] - rad;
@@ -117,6 +139,7 @@ contract Vat {
     function either(bool x, bool y) internal pure returns (bool z) {
         assembly{ z := or(x, y)}
     }
+
     function both(bool x, bool y) internal pure returns (bool z) {
         assembly{ z := and(x, y)}
     }
@@ -160,6 +183,7 @@ contract Vat {
         urns[i][u] = urn;
         ilks[i]    = ilk;
     }
+
     // --- CDP Fungibility ---
     function fork(bytes32 ilk, address src, address dst, int256 dink, int256 dart) external {
         Urn storage u = urns[ilk][src];
@@ -185,6 +209,7 @@ contract Vat {
         require(either(utab >= i.dust, u.art == 0), "Vat/dust-src");
         require(either(vtab >= i.dust, v.art == 0), "Vat/dust-dst");
     }
+
     // --- CDP Confiscation ---
     function grab(bytes32 i, address u, address v, address w, int256 dink, int256 dart) external auth {
         Urn storage urn = urns[i][u];
@@ -209,6 +234,7 @@ contract Vat {
         vice   = vice   - rad;
         debt   = debt   - rad;
     }
+
     function suck(address u, address v, uint256 rad) external auth {
         sin[u] = sin[u] + rad;
         dai[v] = dai[v] + rad;

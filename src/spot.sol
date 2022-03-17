@@ -30,16 +30,9 @@ interface PipLike {
 }
 
 contract Spotter {
-    // --- Auth ---
-    mapping (address => uint256) public wards;
-    function rely(address usr) external auth { wards[usr] = 1;  }
-    function deny(address usr) external auth { wards[usr] = 0; }
-    modifier auth {
-        require(wards[msg.sender] == 1, "Spotter/not-authorized");
-        _;
-    }
-
     // --- Data ---
+    mapping (address => uint256) public wards;
+
     struct Ilk {
         PipLike pip;  // Price Feed
         uint256 mat;  // Liquidation ratio [ray]
@@ -54,12 +47,19 @@ contract Spotter {
 
     VatLike public immutable vat;  // CDP Engine
 
+    uint256 constant RAY = 10 ** 27;
+
     // --- Events ---
     event Poke(
       bytes32 ilk,
       bytes32 val,  // [wad]
       uint256 spot  // [ray]
     );
+
+    modifier auth {
+        require(wards[msg.sender] == 1, "Spotter/not-authorized");
+        _;
+    }
 
     // --- Init ---
     constructor(address vat_) {
@@ -69,20 +69,27 @@ contract Spotter {
         live = 1;
     }
 
-    // --- Math ---
-    uint256 constant RAY = 10 ** 27;
-
     // --- Administration ---
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+    }
+
     function file(bytes32 ilk, bytes32 what, address pip_) external auth {
         require(live == 1, "Spotter/not-live");
         if (what == "pip") ilks[ilk].pip = PipLike(pip_);
         else revert("Spotter/file-unrecognized-param");
     }
+
     function file(bytes32 what, uint256 data) external auth {
         require(live == 1, "Spotter/not-live");
         if (what == "par") par = data;
         else revert("Spotter/file-unrecognized-param");
     }
+
     function file(bytes32 ilk, bytes32 what, uint256 data) external auth {
         require(live == 1, "Spotter/not-live");
         if (what == "mat") ilks[ilk].mat = data;
