@@ -68,11 +68,11 @@ contract Dai {
     function _calculateDomainSeparator(uint256 chainId) private view returns (bytes32) {
         return keccak256(
             abi.encode(
-            keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-            keccak256(bytes(name)),
-            keccak256(bytes(version)),
-            chainId,
-            address(this)
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes(name)),
+                keccak256(bytes(version)),
+                chainId,
+                address(this)
             )
         );
     }
@@ -203,12 +203,12 @@ contract Dai {
                 "\x19\x01",
                 chainId == deploymentChainId ? _DOMAIN_SEPARATOR : _calculateDomainSeparator(chainId),
                 keccak256(abi.encode(
-                PERMIT_TYPEHASH,
-                owner,
-                spender,
-                value,
-                nonce,
-                deadline
+                    PERMIT_TYPEHASH,
+                    owner,
+                    spender,
+                    value,
+                    nonce,
+                    deadline
                 ))
             ));
 

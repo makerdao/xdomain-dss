@@ -3,7 +3,6 @@
 pragma solidity ^0.8.12;
 
 import "ds-test/test.sol";
-import "ds-token/token.sol";
 
 import {Vat} from '../vat.sol';
 
@@ -22,16 +21,6 @@ contract Usr {
             revert(free, 32)
         }
     }
-    function can_frob(bytes32 ilk, address u, address v, address w, int dink, int dart) public returns (bool) {
-        string memory sig = "frob(bytes32,address,address,address,int256,int256)";
-        bytes memory data = abi.encodeWithSignature(sig, ilk, u, v, w, dink, dart);
-
-        bytes memory can_call = abi.encodeWithSignature("try_call(address,bytes)", vat, data);
-        (bool ok, bytes memory success) = address(this).call(can_call);
-
-        ok = abi.decode(success, (bool));
-        if (ok) return true;
-    }
     function can_fork(bytes32 ilk, address src, address dst, int dink, int dart) public returns (bool) {
         string memory sig = "fork(bytes32,address,address,int256,int256)";
         bytes memory data = abi.encodeWithSignature(sig, ilk, src, dst, dink, dart);
@@ -40,7 +29,7 @@ contract Usr {
         (bool ok, bytes memory success) = address(this).call(can_call);
 
         ok = abi.decode(success, (bool));
-        if (ok) return true;
+        return ok;
     }
     function frob(bytes32 ilk, address u, address v, address w, int dink, int dart) public {
         vat.frob(ilk, u, v, w, dink, dart);
