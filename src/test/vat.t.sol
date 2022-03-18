@@ -340,6 +340,7 @@ contract JoinTest is DSTest {
     }
     function test_dai_exit() public {
         address urn = address(this);
+        dai.mint(address(daiA), 100 ether);
         vat.mint(address(this), 100 ether);
         vat.hope(address(daiA));
         assertTrue( try_exit_dai(urn, 40 ether));
@@ -351,12 +352,16 @@ contract JoinTest is DSTest {
         assertEq(vat.dai(me),              rad(60 ether));
     }
     function test_dai_exit_join() public {
+        dai.mint(address(daiA), 60 ether);
+        assertEq(dai.balanceOf(address(daiA)), 60 ether);
         address urn = address(this);
         vat.mint(address(this), 100 ether);
         vat.hope(address(daiA));
         daiA.exit(urn, 60 ether);
+        assertEq(dai.balanceOf(address(daiA)), 0);
         dai.approve(address(daiA), type(uint256).max);
         daiA.join(urn, 30 ether);
+        assertEq(dai.balanceOf(address(daiA)), 30 ether);
         assertEq(dai.balanceOf(address(this)),     30 ether);
         assertEq(vat.dai(me),                  rad(70 ether));
     }

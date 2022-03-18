@@ -29,11 +29,6 @@ interface GemLike {
     function transferFrom(address,address,uint) external returns (bool);
 }
 
-interface DSTokenLike {
-    function mint(address,uint) external;
-    function burn(address,uint) external;
-}
-
 interface VatLike {
     function slip(bytes32,address,int) external;
     function move(address,address,uint) external;
@@ -142,7 +137,7 @@ contract DaiJoin {
     uint256 public live; // Active Flag
 
     VatLike public immutable vat;      // CDP Engine
-    DSTokenLike public immutable dai;  // Stablecoin Token
+    GemLike public immutable dai;  // Stablecoin Token
     uint256 constant RAY = 10 ** 27;
 
     // --- Events ---
@@ -161,7 +156,7 @@ contract DaiJoin {
         wards[msg.sender] = 1;
         live = 1;
         vat = VatLike(vat_);
-        dai = DSTokenLike(dai_);
+        dai = GemLike(dai_);
         emit Rely(msg.sender);
     }
 
@@ -184,14 +179,14 @@ contract DaiJoin {
     // --- User's functions ---
     function join(address usr, uint256 wad) external {
         vat.move(address(this), usr, RAY * wad);
-        dai.burn(msg.sender, wad);
+        dai.transferFrom(msg.sender, address(this), wad);
         emit Join(usr, wad);
     }
 
     function exit(address usr, uint256 wad) external {
         require(live == 1, "DaiJoin/not-live");
         vat.move(msg.sender, address(this), RAY * wad);
-        dai.mint(usr, wad);
+        dai.transfer(usr, wad);
         emit Exit(usr, wad);
     }
 }
