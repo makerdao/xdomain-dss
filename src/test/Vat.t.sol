@@ -6,7 +6,8 @@ import "ds-test/test.sol";
 
 import {Vat} from '../Vat.sol';
 import {Jug} from '../Jug.sol';
-import {GemJoin, DaiJoin} from '../Join.sol';
+import {GemJoin} from '../GemJoin.sol';
+import {DaiJoin} from '../DaiJoin.sol';
 
 import {MockToken} from './mocks/Token.sol';
 
