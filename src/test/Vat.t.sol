@@ -4,11 +4,11 @@ pragma solidity ^0.8.12;
 
 import "ds-test/test.sol";
 
-import {Vat} from '../vat.sol';
-import {Jug} from '../jug.sol';
-import {GemJoin, DaiJoin} from '../join.sol';
+import {Vat} from '../Vat.sol';
+import {Jug} from '../Jug.sol';
+import {GemJoin, DaiJoin} from '../Join.sol';
 
-import {MockToken} from './token.sol';
+import {MockToken} from './mocks/Token.sol';
 
 
 interface Hevm {
@@ -416,5 +416,62 @@ contract FoldTest is DSTest {
         vat.fold("gold", ali,   int256(ray(0.05 ether)));
         assertEq(tab("gold", self), rad(1.05 ether));
         assertEq(vat.dai(ali),      rad(0.05 ether));
+    }
+}
+
+contract ForkTest is DSTest {
+    Vat vat;
+    Usr ali;
+    Usr bob;
+    address a;
+    address b;
+
+    function ray(uint wad) internal pure returns (uint) {
+        return wad * 10 ** 9;
+    }
+    function rad(uint wad) internal pure returns (uint) {
+        return wad * 10 ** 27;
+    }
+
+    function setUp() public {
+        vat = new Vat();
+        ali = new Usr(vat);
+        bob = new Usr(vat);
+        a = address(ali);
+        b = address(bob);
+
+        vat.init("gems");
+        vat.file("gems", "spot", ray(0.5  ether));
+        vat.file("gems", "line", rad(1000 ether));
+        vat.file("Line",         rad(1000 ether));
+
+        vat.slip("gems", a, 8 ether);
+    }
+    function test_fork_to_self() public {
+        ali.frob("gems", a, a, a, 8 ether, 4 ether);
+        assertTrue( ali.can_fork("gems", a, a, 8 ether, 4 ether));
+        assertTrue( ali.can_fork("gems", a, a, 4 ether, 2 ether));
+        assertTrue(!ali.can_fork("gems", a, a, 9 ether, 4 ether));
+    }
+    function test_give_to_other() public {
+        ali.frob("gems", a, a, a, 8 ether, 4 ether);
+        assertTrue(!ali.can_fork("gems", a, b, 8 ether, 4 ether));
+        bob.hope(address(ali));
+        assertTrue( ali.can_fork("gems", a, b, 8 ether, 4 ether));
+    }
+    function test_fork_to_other() public {
+        ali.frob("gems", a, a, a, 8 ether, 4 ether);
+        bob.hope(address(ali));
+        assertTrue( ali.can_fork("gems", a, b, 4 ether, 2 ether));
+        assertTrue(!ali.can_fork("gems", a, b, 4 ether, 3 ether));
+        assertTrue(!ali.can_fork("gems", a, b, 4 ether, 1 ether));
+    }
+    function test_fork_dust() public {
+        ali.frob("gems", a, a, a, 8 ether, 4 ether);
+        bob.hope(address(ali));
+        assertTrue( ali.can_fork("gems", a, b, 4 ether, 2 ether));
+        vat.file("gems", "dust", rad(1 ether));
+        assertTrue( ali.can_fork("gems", a, b, 2 ether, 1 ether));
+        assertTrue(!ali.can_fork("gems", a, b, 1 ether, 0.5 ether));
     }
 }

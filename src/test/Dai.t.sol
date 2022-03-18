@@ -21,7 +21,7 @@ pragma solidity ^0.8.12;
 
 import "ds-test/test.sol";
 
-import "../dai.sol";
+import "../Dai.sol";
 
 contract TokenUser {
     Dai  token;
