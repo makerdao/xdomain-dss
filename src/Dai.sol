@@ -54,10 +54,8 @@ contract Dai {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
 
-        uint256 chainId;
-        assembly {chainId := chainid()}
-        deploymentChainId = chainId;
-        _DOMAIN_SEPARATOR = _calculateDomainSeparator(chainId);
+        deploymentChainId = block.chainid;
+        _DOMAIN_SEPARATOR = _calculateDomainSeparator(block.chainid);
     }
 
     function _calculateDomainSeparator(uint256 chainId) private view returns (bytes32) {
@@ -73,9 +71,7 @@ contract Dai {
     }
 
     function DOMAIN_SEPARATOR() external view returns (bytes32) {
-        uint256 chainId;
-        assembly {chainId := chainid()}
-        return chainId == deploymentChainId ? _DOMAIN_SEPARATOR : _calculateDomainSeparator(chainId);
+        return block.chainid == deploymentChainId ? _DOMAIN_SEPARATOR : _calculateDomainSeparator(block.chainid);
     }
 
     // --- Administration ---
@@ -199,16 +195,13 @@ contract Dai {
     function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external {
         require(block.timestamp <= deadline, "Dai/permit-expired");
 
-        uint256 chainId;
-        assembly { chainId := chainid() }
-
         uint256 nonce;
         unchecked { nonce = nonces[owner]++; }
 
         bytes32 digest =
             keccak256(abi.encodePacked(
                 "\x19\x01",
-                chainId == deploymentChainId ? _DOMAIN_SEPARATOR : _calculateDomainSeparator(chainId),
+                block.chainid == deploymentChainId ? _DOMAIN_SEPARATOR : _calculateDomainSeparator(block.chainid),
                 keccak256(abi.encode(
                     PERMIT_TYPEHASH,
                     owner,

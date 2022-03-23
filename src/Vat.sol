@@ -92,6 +92,10 @@ contract Vat {
         z = y >= 0 ? x - uint256(y) : x + uint256(-y);
     }
 
+    function _int256(uint256 x) internal pure returns (int256 y) {
+        require((y = int256(x)) >= 0);
+    }
+
     // --- Administration ---
     function rely(address usr) external auth {
         require(live == 1, "Vat/not-live");
@@ -214,7 +218,7 @@ contract Vat {
         urn.art = _add(urn.art, dart);
         ilk.Art = _add(ilk.Art, dart);
 
-        int256 dtab = int256(ilk.rate) * dart;
+        int256 dtab = _int256(ilk.rate) * dart;
         uint256 tab = ilk.rate * urn.art;
         debt     = _add(debt, dtab);
 
@@ -279,7 +283,7 @@ contract Vat {
         urn.art = _add(urn.art, dart);
         ilk.Art = _add(ilk.Art, dart);
 
-        int256 dtab = int256(ilk.rate) * dart;
+        int256 dtab = _int256(ilk.rate) * dart;
 
         gem[i][v] = _sub(gem[i][v], dink);
         sin[w]    = _sub(sin[w],    dtab);
@@ -313,7 +317,7 @@ contract Vat {
         require(live == 1, "Vat/not-live");
         Ilk storage ilk = ilks[i];
         ilk.rate    = _add(ilk.rate, rate_);
-        int256 rad  = int256(ilk.Art) * rate_;
+        int256 rad  = _int256(ilk.Art) * rate_;
         dai[u]      = _add(dai[u], rad);
         debt        = _add(debt,   rad);
 

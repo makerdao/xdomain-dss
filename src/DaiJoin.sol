@@ -21,24 +21,24 @@
 pragma solidity ^0.8.12;
 
 interface GemLike {
-    function transfer(address,uint) external returns (bool);
-    function transferFrom(address,address,uint) external returns (bool);
+    function transfer(address,uint256) external returns (bool);
+    function transferFrom(address,address,uint256) external returns (bool);
 }
 
 interface VatLike {
-    function move(address,address,uint) external;
+    function move(address,address,uint256) external;
 }
 
 contract DaiJoin {
     // --- Data ---
-    mapping (address => uint) public wards;
+    mapping (address => uint256) public wards;
 
     bytes32        a;    // Don't change the storage layout for now
     bytes32        b;    // Don't change the storage layout for now
     uint256 public live; // Active Flag
 
-    VatLike public immutable vat;      // CDP Engine
-    GemLike public immutable dai;  // Stablecoin Token
+    VatLike public immutable vat;       // CDP Engine
+    GemLike public immutable dai;       // Stablecoin Token
     uint256 constant RAY = 10 ** 27;
 
     // --- Events ---
