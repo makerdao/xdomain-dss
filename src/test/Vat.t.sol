@@ -347,10 +347,6 @@ contract JoinTest is DSTest {
         assertTrue( try_exit_dai(urn, 40 ether));
         assertEq(dai.balanceOf(address(this)), 40 ether);
         assertEq(vat.dai(me),              rad(60 ether));
-        assertTrue( try_cage(address(daiA)));
-        assertTrue(!try_exit_dai(urn, 40 ether));
-        assertEq(dai.balanceOf(address(this)), 40 ether);
-        assertEq(vat.dai(me),              rad(60 ether));
     }
     function test_dai_exit_join() public {
         dai.mint(address(daiA), 60 ether);
@@ -369,8 +365,6 @@ contract JoinTest is DSTest {
     function test_cage_no_access() public {
         gemA.deny(address(this));
         assertTrue(!try_cage(address(gemA)));
-        daiA.deny(address(this));
-        assertTrue(!try_cage(address(daiA)));
     }
 }
 

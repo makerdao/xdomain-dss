@@ -30,51 +30,17 @@ interface VatLike {
 }
 
 contract DaiJoin {
-    // --- Data ---
-    mapping (address => uint256) public wards;
-
-    bytes32        a;    // Don't change the storage layout for now
-    bytes32        b;    // Don't change the storage layout for now
-    uint256 public live; // Active Flag
-
     VatLike public immutable vat;       // CDP Engine
     GemLike public immutable dai;       // Stablecoin Token
     uint256 constant RAY = 10 ** 27;
 
     // --- Events ---
-    event Rely(address indexed usr);
-    event Deny(address indexed usr);
-    event Cage();
     event Join(address indexed usr, uint256 wad);
     event Exit(address indexed usr, uint256 wad);
 
-    modifier auth {
-        require(wards[msg.sender] == 1, "DaiJoin/not-authorized");
-        _;
-    }
-
     constructor(address vat_, address dai_) {
-        wards[msg.sender] = 1;
-        live = 1;
         vat = VatLike(vat_);
         dai = GemLike(dai_);
-        emit Rely(msg.sender);
-    }
-
-    // --- Administration ---
-    function rely(address usr) external auth {
-        wards[usr] = 1;
-        emit Rely(usr);
-    }
-
-    function deny(address usr) external auth {
-        wards[usr] = 0;
-        emit Deny(usr);
-    }
-
-    function cage() external auth {
-        live = 0;
-        emit Cage();
     }
 
     // --- User's functions ---
@@ -85,7 +51,6 @@ contract DaiJoin {
     }
 
     function exit(address usr, uint256 wad) external {
-        require(live == 1, "DaiJoin/not-live");
         vat.move(msg.sender, address(this), RAY * wad);
         dai.transfer(usr, wad);
         emit Exit(usr, wad);
