@@ -21,13 +21,13 @@
 pragma solidity ^0.8.12;
 
 interface GemLike {
-    function decimals() external view returns (uint);
-    function transfer(address,uint) external returns (bool);
-    function transferFrom(address,address,uint) external returns (bool);
+    function decimals() external view returns (uint256);
+    function transfer(address,uint256) external returns (bool);
+    function transferFrom(address,address,uint256) external returns (bool);
 }
 
 interface VatLike {
-    function slip(bytes32,address,int) external;
+    function slip(bytes32,address,int256) external;
 }
 
 /*
@@ -56,7 +56,7 @@ interface VatLike {
 
 contract GemJoin {
     // --- Data ---
-    mapping (address => uint) public wards;
+    mapping (address => uint256) public wards;
 
     bytes32        a;     // Don't change the storage layout for now
     bytes32        b;     // Don't change the storage layout for now
@@ -110,15 +110,15 @@ contract GemJoin {
     // --- User's functions ---
     function join(address usr, uint256 wad) external {
         require(live == 1, "GemJoin/not-live");
-        require(int(wad) >= 0, "GemJoin/overflow");
-        vat.slip(ilk, usr, int(wad));
+        require(int256(wad) >= 0, "GemJoin/overflow");
+        vat.slip(ilk, usr, int256(wad));
         require(gem.transferFrom(msg.sender, address(this), wad), "GemJoin/failed-transfer");
         emit Join(usr, wad);
     }
 
     function exit(address usr, uint256 wad) external {
         require(wad <= 2 ** 255, "GemJoin/overflow");
-        vat.slip(ilk, msg.sender, -int(wad));
+        vat.slip(ilk, msg.sender, -int256(wad));
         require(gem.transfer(usr, wad), "GemJoin/failed-transfer");
         emit Exit(usr, wad);
     }

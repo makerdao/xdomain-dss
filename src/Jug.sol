@@ -91,6 +91,10 @@ contract Jug {
       }
     }
 
+    function _int256(uint256 x) internal pure returns (int256 y) {
+        require((y = int256(x)) >= 0);
+    }
+
     // --- Administration ---
     function rely(address usr) external auth {
         wards[usr] = 1;
@@ -133,7 +137,7 @@ contract Jug {
     function drip(bytes32 ilk) external returns (uint256 rate) {
         (, uint256 prev) = vat.ilks(ilk);
         rate = _rpow(base + ilks[ilk].duty, block.timestamp - ilks[ilk].rho, RAY) * prev / RAY;
-        vat.fold(ilk, vow, int256(rate) - int256(prev));
+        vat.fold(ilk, vow, _int256(rate) - _int256(prev));
         ilks[ilk].rho = block.timestamp;
         emit Drip(ilk);
     }
