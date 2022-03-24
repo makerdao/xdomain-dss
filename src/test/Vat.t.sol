@@ -311,7 +311,6 @@ contract JoinTest is DSTest {
 
         dai  = new MockToken("Dai");
         daiA = new DaiJoin(address(vat), address(dai));
-        vat.rely(address(daiA));
 
         me = address(this);
     }
