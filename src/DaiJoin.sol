@@ -20,9 +20,9 @@
 
 pragma solidity ^0.8.12;
 
-interface GemLike {
-    function transfer(address,uint256) external returns (bool);
-    function transferFrom(address,address,uint256) external returns (bool);
+interface DaiLike {
+    function burn(address,uint256) external;
+    function mint(address,uint256) external;
 }
 
 interface VatLike {
@@ -31,7 +31,7 @@ interface VatLike {
 
 contract DaiJoin {
     VatLike public immutable vat;       // CDP Engine
-    GemLike public immutable dai;       // Stablecoin Token
+    DaiLike public immutable dai;       // Stablecoin Token
     uint256 constant RAY = 10 ** 27;
 
     // --- Events ---
@@ -40,19 +40,19 @@ contract DaiJoin {
 
     constructor(address vat_, address dai_) {
         vat = VatLike(vat_);
-        dai = GemLike(dai_);
+        dai = DaiLike(dai_);
     }
 
     // --- User's functions ---
     function join(address usr, uint256 wad) external {
         vat.move(address(this), usr, RAY * wad);
-        dai.transferFrom(msg.sender, address(this), wad);
+        dai.burn(msg.sender, wad);
         emit Join(usr, wad);
     }
 
     function exit(address usr, uint256 wad) external {
         vat.move(msg.sender, address(this), RAY * wad);
-        dai.transfer(usr, wad);
+        dai.mint(usr, wad);
         emit Exit(usr, wad);
     }
 }
