@@ -38,7 +38,6 @@ contract Jug {
     }
 
     mapping (bytes32 => Ilk) public ilks;
-    bytes32                         a;     // Don't change the storage layout for now
     address                  public vow;   // Debt Engine
     uint256                  public base;  // Global, per-second stability fee contribution [ray]
 

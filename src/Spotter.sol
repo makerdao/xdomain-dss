@@ -38,7 +38,6 @@ contract Spotter {
 
     mapping (bytes32 => Ilk) public ilks;
 
-    bytes32        a;    // Don't change the storage layout for now
     uint256 public par;  // ref per dai [ray]
 
     uint256 public live;

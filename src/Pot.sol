@@ -54,7 +54,6 @@ contract Pot {
     uint256 public dsr;   // The Dai Savings Rate          [ray]
     uint256 public chi;   // The Rate Accumulator          [ray]
 
-    bytes32        a;     // Don't change the storage layout for now
     address public vow;   // Debt Engine
     uint256 public rho;   // Time of last drip     [unix epoch time]
 

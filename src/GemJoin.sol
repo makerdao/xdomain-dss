@@ -58,10 +58,6 @@ contract GemJoin {
     // --- Data ---
     mapping (address => uint256) public wards;
 
-    bytes32        a;     // Don't change the storage layout for now
-    bytes32        b;     // Don't change the storage layout for now
-    bytes32        c;     // Don't change the storage layout for now
-    bytes32        d;     // Don't change the storage layout for now
     uint256 public live;  // Active Flag
 
     VatLike public immutable vat;   // CDP Engine
