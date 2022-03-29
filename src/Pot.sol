@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// pot.sol -- Dai Savings Rate
+/// Pot.sol -- Dai Savings Rate
 
 // Copyright (C) 2018 Rain <rainbreak@riseup.net>
+// Copyright (C) 2022 Dai Foundation
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -17,11 +18,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pragma solidity >=0.5.12;
-
-// FIXME: This contract was altered compared to the production version.
-// It doesn't use LibNote anymore.
-// New deployments of this contract will need to include custom events (TO DO).
+pragma solidity ^0.8.12;
 
 /*
    "Savings Dai" is obtained when Dai is deposited into
@@ -48,41 +45,51 @@ interface VatLike {
 }
 
 contract Pot {
-    // --- Auth ---
-    mapping (address => uint) public wards;
-    function rely(address guy) external auth { wards[guy] = 1; }
-    function deny(address guy) external auth { wards[guy] = 0; }
-    modifier auth {
-        require(wards[msg.sender] == 1, "Pot/not-authorized");
-        _;
-    }
-
     // --- Data ---
+    mapping (address => uint256) public wards;
+
     mapping (address => uint256) public pie;  // Normalised Savings Dai [wad]
 
     uint256 public Pie;   // Total Normalised Savings Dai  [wad]
     uint256 public dsr;   // The Dai Savings Rate          [ray]
     uint256 public chi;   // The Rate Accumulator          [ray]
 
-    VatLike public vat;   // CDP Engine
     address public vow;   // Debt Engine
     uint256 public rho;   // Time of last drip     [unix epoch time]
 
     uint256 public live;  // Active Flag
 
+    VatLike public immutable vat;   // CDP Engine
+    uint256 constant RAY = 10 ** 27;
+
+    // --- Events ---
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event File(bytes32 indexed what, uint256 data);
+    event File(bytes32 indexed what, address data);
+    event Cage();
+    event Drip();
+    event Join(address indexed usr, uint256 wad);
+    event Exit(address indexed usr, uint256 wad);
+
+    modifier auth {
+        require(wards[msg.sender] == 1, "Pot/not-authorized");
+        _;
+    }
+
     // --- Init ---
-    constructor(address vat_) public {
+    constructor(address vat_) {
         wards[msg.sender] = 1;
         vat = VatLike(vat_);
-        dsr = ONE;
-        chi = ONE;
-        rho = now;
+        dsr = RAY;
+        chi = RAY;
+        rho = block.timestamp;
         live = 1;
+        emit Rely(msg.sender);
     }
 
     // --- Math ---
-    uint256 constant ONE = 10 ** 27;
-    function rpow(uint x, uint n, uint base) internal pure returns (uint z) {
+    function _rpow(uint256 x, uint256 n, uint256 base) internal pure returns (uint256 z) {
         assembly {
             switch x case 0 {switch n case 0 {z := base} default {z := 0}}
             default {
@@ -106,61 +113,60 @@ contract Pot {
         }
     }
 
-    function rmul(uint x, uint y) internal pure returns (uint z) {
-        z = mul(x, y) / ONE;
-    }
-
-    function add(uint x, uint y) internal pure returns (uint z) {
-        require((z = x + y) >= x);
-    }
-
-    function sub(uint x, uint y) internal pure returns (uint z) {
-        require((z = x - y) <= x);
-    }
-
-    function mul(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || (z = x * y) / y == x);
-    }
-
     // --- Administration ---
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
     function file(bytes32 what, uint256 data) external auth {
         require(live == 1, "Pot/not-live");
-        require(now == rho, "Pot/rho-not-updated");
+        require(block.timestamp == rho, "Pot/rho-not-updated");
         if (what == "dsr") dsr = data;
         else revert("Pot/file-unrecognized-param");
+        emit File(what, data);
     }
 
-    function file(bytes32 what, address addr) external auth {
-        if (what == "vow") vow = addr;
+    function file(bytes32 what, address data) external auth {
+        if (what == "vow") vow = data;
         else revert("Pot/file-unrecognized-param");
+        emit File(what, data);
     }
 
     function cage() external auth {
         live = 0;
-        dsr = ONE;
+        dsr = RAY;
+        emit Cage();
     }
 
     // --- Savings Rate Accumulation ---
-    function drip() external returns (uint tmp) {
-        require(now >= rho, "Pot/invalid-now");
-        tmp = rmul(rpow(dsr, now - rho, ONE), chi);
-        uint chi_ = sub(tmp, chi);
+    function drip() external returns (uint256 tmp) {
+        tmp = _rpow(dsr, block.timestamp - rho, RAY) * chi / RAY;
+        uint256 chi_ = tmp - chi;
         chi = tmp;
-        rho = now;
-        vat.suck(address(vow), address(this), mul(Pie, chi_));
+        rho = block.timestamp;
+        vat.suck(address(vow), address(this), Pie * chi_);
+        emit Drip();
     }
 
     // --- Savings Dai Management ---
-    function join(uint wad) external {
-        require(now == rho, "Pot/rho-not-updated");
-        pie[msg.sender] = add(pie[msg.sender], wad);
-        Pie             = add(Pie,             wad);
-        vat.move(msg.sender, address(this), mul(chi, wad));
+    function join(uint256 wad) external {
+        require(block.timestamp == rho, "Pot/rho-not-updated");
+        pie[msg.sender] = pie[msg.sender] + wad;
+        Pie             = Pie             + wad;
+        vat.move(msg.sender, address(this), chi * wad);
+        emit Join(msg.sender, wad);
     }
 
-    function exit(uint wad) external {
-        pie[msg.sender] = sub(pie[msg.sender], wad);
-        Pie             = sub(Pie,             wad);
-        vat.move(address(this), msg.sender, mul(chi, wad));
+    function exit(uint256 wad) external {
+        pie[msg.sender] = pie[msg.sender] - wad;
+        Pie             = Pie             - wad;
+        vat.move(address(this), msg.sender, chi * wad);
+        emit Exit(msg.sender, wad);
     }
 }

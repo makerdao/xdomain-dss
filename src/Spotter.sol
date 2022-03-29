@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// spot.sol -- Spotter
+/// Spotter.sol -- Spotter
+
+// Copyright (C) 2018-2022 Dai Foundation
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -15,11 +17,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pragma solidity >=0.5.12;
-
-// FIXME: This contract was altered compared to the production version.
-// It doesn't use LibNote anymore.
-// New deployments of this contract will need to include custom events (TO DO).
+pragma solidity ^0.8.12;
 
 interface VatLike {
     function file(bytes32, bytes32, uint) external;
@@ -30,16 +28,9 @@ interface PipLike {
 }
 
 contract Spotter {
-    // --- Auth ---
-    mapping (address => uint) public wards;
-    function rely(address guy) external auth { wards[guy] = 1;  }
-    function deny(address guy) external auth { wards[guy] = 0; }
-    modifier auth {
-        require(wards[msg.sender] == 1, "Spotter/not-authorized");
-        _;
-    }
-
     // --- Data ---
+    mapping (address => uint256) public wards;
+
     struct Ilk {
         PipLike pip;  // Price Feed
         uint256 mat;  // Liquidation ratio [ray]
@@ -47,62 +38,85 @@ contract Spotter {
 
     mapping (bytes32 => Ilk) public ilks;
 
-    VatLike public vat;  // CDP Engine
     uint256 public par;  // ref per dai [ray]
 
     uint256 public live;
 
+    VatLike public immutable vat;  // CDP Engine
+
+    uint256 constant RAY = 10 ** 27;
+
     // --- Events ---
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event File(bytes32 indexed ilk, bytes32 indexed what, address data);
+    event File(bytes32 indexed what, uint256 data);
+    event File(bytes32 indexed ilk, bytes32 indexed what, uint256 data);
+    event Cage();
     event Poke(
       bytes32 ilk,
       bytes32 val,  // [wad]
       uint256 spot  // [ray]
     );
 
+    modifier auth {
+        require(wards[msg.sender] == 1, "Spotter/not-authorized");
+        _;
+    }
+
     // --- Init ---
-    constructor(address vat_) public {
+    constructor(address vat_) {
         wards[msg.sender] = 1;
         vat = VatLike(vat_);
-        par = ONE;
+        par = RAY;
         live = 1;
-    }
-
-    // --- Math ---
-    uint constant ONE = 10 ** 27;
-
-    function mul(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || (z = x * y) / y == x);
-    }
-    function rdiv(uint x, uint y) internal pure returns (uint z) {
-        z = mul(x, ONE) / y;
+        emit Rely(msg.sender);
     }
 
     // --- Administration ---
-    function file(bytes32 ilk, bytes32 what, address pip_) external auth {
-        require(live == 1, "Spotter/not-live");
-        if (what == "pip") ilks[ilk].pip = PipLike(pip_);
-        else revert("Spotter/file-unrecognized-param");
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
     }
-    function file(bytes32 what, uint data) external auth {
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
+    function file(bytes32 ilk, bytes32 what, address data) external auth {
+        require(live == 1, "Spotter/not-live");
+        if (what == "pip") ilks[ilk].pip = PipLike(data);
+        else revert("Spotter/file-unrecognized-param");
+        emit File(ilk, what, data);
+    }
+
+    function file(bytes32 what, uint256 data) external auth {
         require(live == 1, "Spotter/not-live");
         if (what == "par") par = data;
         else revert("Spotter/file-unrecognized-param");
+        emit File(what, data);
     }
-    function file(bytes32 ilk, bytes32 what, uint data) external auth {
+
+    function file(bytes32 ilk, bytes32 what, uint256 data) external auth {
         require(live == 1, "Spotter/not-live");
         if (what == "mat") ilks[ilk].mat = data;
         else revert("Spotter/file-unrecognized-param");
+        emit File(ilk, what, data);
+    }
+
+    function cage() external auth {
+        live = 0;
+        emit Cage();
     }
 
     // --- Update value ---
     function poke(bytes32 ilk) external {
         (bytes32 val, bool has) = ilks[ilk].pip.peek();
-        uint256 spot = has ? rdiv(rdiv(mul(uint(val), 10 ** 9), par), ilks[ilk].mat) : 0;
+        uint256 spot = has
+                        ? (uint256(val) * 10 ** 9 * RAY / par) * RAY / ilks[ilk].mat
+                        : 0;
         vat.file(ilk, "spot", spot);
         emit Poke(ilk, val, spot);
-    }
-
-    function cage() external auth {
-        live = 0;
     }
 }

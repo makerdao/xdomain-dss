@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// jug.sol -- Dai Lending Rate
+/// Jug.sol -- Dai Lending Rate
 
 // Copyright (C) 2018 Rain <rainbreak@riseup.net>
+// Copyright (C) 2022 Dai Foundation
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -17,49 +18,55 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pragma solidity >=0.5.12;
-
-// FIXME: This contract was altered compared to the production version.
-// It doesn't use LibNote anymore.
-// New deployments of this contract will need to include custom events (TO DO).
+pragma solidity ^0.8.12;
 
 interface VatLike {
     function ilks(bytes32) external returns (
         uint256 Art,   // [wad]
         uint256 rate   // [ray]
     );
-    function fold(bytes32,address,int) external;
+    function fold(bytes32,address,int256) external;
 }
 
 contract Jug {
-    // --- Auth ---
-    mapping (address => uint) public wards;
-    function rely(address usr) external auth { wards[usr] = 1; }
-    function deny(address usr) external auth { wards[usr] = 0; }
-    modifier auth {
-        require(wards[msg.sender] == 1, "Jug/not-authorized");
-        _;
-    }
-
     // --- Data ---
+    mapping (address => uint256) public wards;
+
     struct Ilk {
         uint256 duty;  // Collateral-specific, per-second stability fee contribution [ray]
         uint256  rho;  // Time of last drip [unix epoch time]
     }
 
     mapping (bytes32 => Ilk) public ilks;
-    VatLike                  public vat;   // CDP Engine
     address                  public vow;   // Debt Engine
     uint256                  public base;  // Global, per-second stability fee contribution [ray]
 
+    VatLike public immutable vat;   // CDP Engine
+    uint256 constant RAY = 10 ** 27;
+
+    // --- Events ---
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event Init(bytes32 indexed ilk);
+    event File(bytes32 indexed ilk, bytes32 indexed what, uint256 data);
+    event File(bytes32 indexed what, uint256 data);
+    event File(bytes32 indexed what, address data);
+    event Drip(bytes32 indexed ilk);
+
+    modifier auth {
+        require(wards[msg.sender] == 1, "Jug/not-authorized");
+        _;
+    }
+
     // --- Init ---
-    constructor(address vat_) public {
+    constructor(address vat_) {
         wards[msg.sender] = 1;
         vat = VatLike(vat_);
+        emit Rely(msg.sender);
     }
 
     // --- Math ---
-    function rpow(uint x, uint n, uint b) internal pure returns (uint z) {
+    function _rpow(uint256 x, uint256 n, uint256 b) internal pure returns (uint256 z) {
       assembly {
         switch x case 0 {switch n case 0 {z := b} default {z := 0}}
         default {
@@ -82,48 +89,55 @@ contract Jug {
         }
       }
     }
-    uint256 constant ONE = 10 ** 27;
-    function add(uint x, uint y) internal pure returns (uint z) {
-        z = x + y;
-        require(z >= x);
-    }
-    function diff(uint x, uint y) internal pure returns (int z) {
-        z = int(x) - int(y);
-        require(int(x) >= 0 && int(y) >= 0);
-    }
-    function rmul(uint x, uint y) internal pure returns (uint z) {
-        z = x * y;
-        require(y == 0 || z / y == x);
-        z = z / ONE;
+
+    function _int256(uint256 x) internal pure returns (int256 y) {
+        require((y = int256(x)) >= 0);
     }
 
     // --- Administration ---
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
     function init(bytes32 ilk) external auth {
         Ilk storage i = ilks[ilk];
         require(i.duty == 0, "Jug/ilk-already-init");
-        i.duty = ONE;
-        i.rho  = now;
+        i.duty = RAY;
+        i.rho  = block.timestamp;
+        emit Init(ilk);
     }
-    function file(bytes32 ilk, bytes32 what, uint data) external auth {
-        require(now == ilks[ilk].rho, "Jug/rho-not-updated");
+
+    function file(bytes32 ilk, bytes32 what, uint256 data) external auth {
+        require(block.timestamp == ilks[ilk].rho, "Jug/rho-not-updated");
         if (what == "duty") ilks[ilk].duty = data;
         else revert("Jug/file-unrecognized-param");
+        emit File(ilk, what, data);
     }
-    function file(bytes32 what, uint data) external auth {
+
+    function file(bytes32 what, uint256 data) external auth {
         if (what == "base") base = data;
         else revert("Jug/file-unrecognized-param");
+        emit File(what, data);
     }
+
     function file(bytes32 what, address data) external auth {
         if (what == "vow") vow = data;
         else revert("Jug/file-unrecognized-param");
+        emit File(what, data);
     }
 
     // --- Stability Fee Collection ---
-    function drip(bytes32 ilk) external returns (uint rate) {
-        require(now >= ilks[ilk].rho, "Jug/invalid-now");
-        (, uint prev) = vat.ilks(ilk);
-        rate = rmul(rpow(add(base, ilks[ilk].duty), now - ilks[ilk].rho, ONE), prev);
-        vat.fold(ilk, vow, diff(rate, prev));
-        ilks[ilk].rho = now;
+    function drip(bytes32 ilk) external returns (uint256 rate) {
+        (, uint256 prev) = vat.ilks(ilk);
+        rate = _rpow(base + ilks[ilk].duty, block.timestamp - ilks[ilk].rho, RAY) * prev / RAY;
+        vat.fold(ilk, vow, _int256(rate) - _int256(prev));
+        ilks[ilk].rho = block.timestamp;
+        emit Drip(ilk);
     }
 }
