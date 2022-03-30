@@ -1,2 +1,8 @@
 /out
 .DS_Store
+
+# certora
+.*certora*
+.last_confs/
+*.zip
+resource_errors.json
