@@ -372,8 +372,8 @@ rule slip_revert(bytes32 ilk, address usr, int256 wad) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = ward != 1;
     bool revert3 = to_mathint(wad) == min_int256();
-    bool revert4 = wad > 0 && to_mathint(gem) + to_mathint(wad) > max_uint256;
-    bool revert5 = wad < 0 && to_mathint(gem) < to_mathint(wad);
+    bool revert4 = wad < 0 && to_mathint(gem) + to_mathint(wad) < 0;
+    bool revert5 = wad > 0 && to_mathint(gem) + to_mathint(wad) > max_uint256;
 
     assert(revert1 => lastReverted, "revert1 failed");
     assert(revert2 => lastReverted, "revert2 failed");
