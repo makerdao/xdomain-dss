@@ -25,7 +25,7 @@ methods {
 definition RAY() returns uint256 = 10^27;
 
 definition min_int256() returns mathint = -1 * 2^255;
-// definition max_int256() returns mathint = 2^255 - 1;
+definition max_int256() returns mathint = 2^255 - 1;
 
 // Verify fallback always reverts
 // In this case is pretty important as we are filtering it out from some invariants/rules
@@ -603,4 +603,89 @@ rule suck_revert(address u, address v, uint256 rad) {
                            revert4 || revert5 || revert6, "Revert rules are not covering all the cases");
 }
 
-// TODO: fold
+// Verify that variables behave correctly on fold
+rule fold(bytes32 i, address u, int256 rate_) {
+    env e;
+
+    address otherUsr;
+    require(otherUsr != u);
+
+    uint256 ArtBefore; uint256 rateBefore; uint256 spotBefore; uint256 lineBefore; uint256 dustBefore;
+    ArtBefore, rateBefore, spotBefore, lineBefore, dustBefore = ilks(i);
+
+    uint256 daiBefore = dai(u);
+    uint256 debtBefore = debt();
+    uint256 daiOtherBefore = dai(otherUsr);
+
+    fold(e, i, u, rate_);
+
+    uint256 ArtAfter; uint256 rateAfter; uint256 spotAfter; uint256 lineAfter; uint256 dustAfter;
+    ArtAfter, rateAfter, spotAfter, lineAfter, dustAfter = ilks(i);
+
+    uint256 daiAfter = dai(u);
+    uint256 debtAfter = debt();
+    uint256 daiOtherAfter = dai(otherUsr);
+
+    assert(to_mathint(rateAfter) == to_mathint(rateBefore) + to_mathint(rate_), "fold did not set rate as expected");
+    assert(to_mathint(daiAfter) == to_mathint(daiBefore) + to_mathint(ArtBefore) * to_mathint(rate_), "fold did not set u dai as expected");
+    assert(to_mathint(debtAfter) == to_mathint(debtBefore) + to_mathint(ArtBefore) * to_mathint(rate_), "fold did not set debt as expected");
+    assert(ArtAfter == ArtBefore, "fold did not keep Art as expected");
+    assert(spotAfter == spotBefore, "fold did not keep spot as expected");
+    assert(lineAfter == lineBefore, "fold did not keep line as expected");
+    assert(dustAfter == dustBefore, "fold did not keep dust as expected");
+    assert(daiOtherAfter == daiOtherBefore, "fold did not keep other dai as expected");
+}
+
+// Verify revert rules on fold
+rule fold_revert(bytes32 i, address u, int256 rate_) {
+    env e;
+
+    uint256 ward = wards(e.msg.sender);
+    uint256 live = live();
+
+    uint256 Art; uint256 rate; uint256 spot; uint256 line; uint256 dust;
+    Art, rate, spot, line, dust = ilks(i);
+
+    uint256 dai = dai(u);
+    uint256 debt = debt();
+
+    fold@withrevert(e, i, u, rate_);
+
+    mathint rad = to_mathint(Art) * to_mathint(rate_);
+
+    bool revert1  = e.msg.value > 0;
+    bool revert2  = ward != 1;
+    bool revert3  = live != 1;
+    bool revert4  = to_mathint(rate_) == min_int256();
+    bool revert5  = rate_ < 0 && to_mathint(rate) + to_mathint(rate_) < 0;
+    bool revert6  = rate_ > 0 && to_mathint(rate) + to_mathint(rate_) > max_uint256;
+    bool revert7  = Art > max_int256();
+    bool revert8  = rate_ < 0 && to_mathint(Art) * to_mathint(rate_) < min_int256();
+    bool revert9  = rate_ > 0 && to_mathint(Art) * to_mathint(rate_) > max_int256();
+    bool revert10 = rad == min_int256();
+    bool revert11 = rate_ < 0 && to_mathint(dai) + rad < 0;
+    bool revert12 = rate_ > 0 && to_mathint(dai) + rad > max_uint256;
+    bool revert13 = rate_ < 0 && to_mathint(debt) + rad < 0;
+    bool revert14 = rate_ > 0 && to_mathint(debt) + rad > max_uint256;
+
+    assert(revert1  => lastReverted, "revert1 failed");
+    assert(revert2  => lastReverted, "revert2 failed");
+    assert(revert3  => lastReverted, "revert3 failed");
+    assert(revert4  => lastReverted, "revert4 failed");
+    assert(revert5  => lastReverted, "revert5 failed");
+    assert(revert6  => lastReverted, "revert6 failed");
+    assert(revert7  => lastReverted, "revert7 failed");
+    assert(revert8  => lastReverted, "revert8 failed");
+    assert(revert9  => lastReverted, "revert9 failed");
+    assert(revert10 => lastReverted, "revert10 failed");
+    assert(revert11 => lastReverted, "revert11 failed");
+    assert(revert12 => lastReverted, "revert12 failed");
+    assert(revert13 => lastReverted, "revert13 failed");
+    assert(revert14 => lastReverted, "revert14 failed");
+
+    assert(lastReverted => revert1  || revert2  || revert3 ||
+                           revert4  || revert5  || revert6 ||
+                           revert7  || revert8  || revert9 ||
+                           revert10 || revert11 || revert12||
+                           revert13 || revert14, "Revert rules are not covering all the cases");
+}
