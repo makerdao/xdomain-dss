@@ -482,7 +482,135 @@ rule move_revert(address src, address dst, uint256 rad) {
 
 // TODO: fork
 
-// TODO: grab
+// Verify that variables behave correctly on grab
+rule grab(bytes32 i, address u, address v, address w, int256 dink, int256 dart) {
+    env e;
+
+    bytes32 otherIlk;
+    address otherUsrU;
+    address otherUsrV;
+    address otherUsrW;
+    require((otherIlk != i || otherUsrU != u) && (otherIlk != i || otherUsrV != v) && otherUsrW != w);
+
+    uint256 ArtBefore; uint256 rateBefore; uint256 spotBefore; uint256 lineBefore; uint256 dustBefore;
+    ArtBefore, rateBefore, spotBefore, lineBefore, dustBefore = ilks(i);
+
+    uint256 inkBefore; uint256 artBefore;
+    inkBefore, artBefore = urns(i, u);
+
+    uint256 gemBefore = gem(i, v);
+    uint256 sinBefore = sin(w);
+    uint256 viceBefore = vice();
+
+    uint256 inkOtherBefore; uint256 artOtherBefore;
+    inkOtherBefore, artOtherBefore = urns(otherIlk, otherUsrU);
+
+    uint256 gemOtherBefore = gem(otherIlk, otherUsrV);
+    uint256 sinOtherBefore = dai(otherUsrW);
+
+    grab(e, i, u, v, w, dink, dart);
+
+    uint256 ArtAfter; uint256 rateAfter; uint256 spotAfter; uint256 lineAfter; uint256 dustAfter;
+    ArtAfter, rateAfter, spotAfter, lineAfter, dustAfter = ilks(i);
+
+    uint256 inkAfter; uint256 artAfter;
+    inkAfter, artAfter = urns(i, u);
+
+    uint256 gemAfter = gem(i, v);
+    uint256 sinAfter = sin(w);
+    uint256 viceAfter = vice();
+
+    uint256 inkOtherAfter; uint256 artOtherAfter;
+    inkOtherAfter, artOtherAfter = urns(otherIlk, otherUsrU);
+
+    uint256 gemOtherAfter = gem(otherIlk, otherUsrV);
+    uint256 sinOtherAfter = dai(otherUsrW);
+
+    assert(to_mathint(inkAfter) == to_mathint(inkBefore) + to_mathint(dink), "grab did not set u ink as expected");
+    assert(to_mathint(artAfter) == to_mathint(artBefore) + to_mathint(dart), "grab did not set u art as expected");
+    assert(to_mathint(ArtAfter) == to_mathint(ArtBefore) + to_mathint(dart), "grab did not set Art as expected");
+    assert(to_mathint(gemAfter) == to_mathint(gemBefore) - to_mathint(dink), "grab did not set v gem as expected");
+    assert(to_mathint(sinAfter) == to_mathint(sinBefore) - to_mathint(rateBefore) * to_mathint(dart), "grab did not set w sin as expected");
+    assert(to_mathint(viceAfter) == to_mathint(viceBefore) - to_mathint(rateBefore) * to_mathint(dart), "grab did not set vice as expected");
+    assert(inkOtherAfter == inkOtherBefore, "grab did not keep other ink as expected");
+    assert(artOtherAfter == artOtherBefore, "grab did not keep other ink as expected");
+    assert(rateAfter == rateBefore, "grab did not keep rate as expected");
+    assert(spotAfter == spotBefore, "grab did not keep spot as expected");
+    assert(lineAfter == lineBefore, "grab did not keep line as expected");
+    assert(dustAfter == dustBefore, "grab did not keep dust as expected");
+    assert(gemOtherAfter == gemOtherBefore, "grab did not keep other gem as expected");
+    assert(sinOtherAfter == sinOtherBefore, "grab did not keep other sin as expected");
+}
+
+// Verify revert rules on grab
+// TODO: Review timeout
+rule grab_revert(bytes32 i, address u, address v, address w, int256 dink, int256 dart) {
+    env e;
+
+    uint256 ward = wards(e.msg.sender);
+
+    uint256 Art; uint256 rate; uint256 spot; uint256 line; uint256 dust;
+    Art, rate, spot, line, dust = ilks(i);
+
+    uint256 ink; uint256 art;
+    ink, art = urns(i, u);
+
+    uint256 gem = gem(i, v);
+    uint256 sin = sin(w);
+    uint256 vice = vice();
+
+    grab@withrevert(e, i, u, v, w, dink, dart);
+
+    bool revert1 = e.msg.value > 0;
+    bool revert2 = ward != 1;
+    bool revert3  = to_mathint(dink) == min_int256();
+    bool revert4  = dink < 0 && to_mathint(ink) + to_mathint(dink) < 0;
+    bool revert5  = dink > 0 && to_mathint(ink) + to_mathint(dink) > max_uint256;
+    bool revert6  = to_mathint(dart) == min_int256();
+    bool revert7  = dart < 0 && to_mathint(art) + to_mathint(dart) < 0;
+    bool revert8  = dart > 0 && to_mathint(art) + to_mathint(dart) > max_uint256;
+    bool revert9  = dart < 0 && to_mathint(Art) + to_mathint(dart) < 0;
+    bool revert10 = dart > 0 && to_mathint(Art) + to_mathint(dart) > max_uint256;
+    bool revert11 = to_mathint(rate) > max_int256();
+    bool revert12 = dart < 0 && to_mathint(rate) * to_mathint(dart) < min_int256();
+    bool revert13 = dart > 0 && to_mathint(rate) * to_mathint(dart) > max_int256();
+    bool revert14 = dink < 0 && to_mathint(gem) - to_mathint(dink) > max_uint256;
+    bool revert15 = dink > 0 && to_mathint(gem) - to_mathint(dink) < 0;
+    bool revert16 = to_mathint(rate) * to_mathint(dart) == min_int256();
+    bool revert17 = dart < 0 && to_mathint(sin) - to_mathint(rate) * to_mathint(dart) > max_uint256;
+    bool revert18 = dart > 0 && to_mathint(sin) - to_mathint(rate) * to_mathint(dart) < 0;
+    bool revert19 = dart < 0 && to_mathint(vice) - to_mathint(rate) * to_mathint(dart) > max_uint256;
+    bool revert20 = dart > 0 && to_mathint(vice) - to_mathint(rate) * to_mathint(dart) < 0;
+
+    assert(revert1  => lastReverted, "revert1 failed");
+    assert(revert2  => lastReverted, "revert2 failed");
+    assert(revert3  => lastReverted, "revert3 failed");
+    assert(revert4  => lastReverted, "revert4 failed");
+    assert(revert5  => lastReverted, "revert5 failed");
+    assert(revert6  => lastReverted, "revert6 failed");
+    assert(revert7  => lastReverted, "revert7 failed");
+    assert(revert8  => lastReverted, "revert8 failed");
+    assert(revert9  => lastReverted, "revert9 failed");
+    assert(revert10 => lastReverted, "revert10 failed");
+    assert(revert11 => lastReverted, "revert11 failed");
+    assert(revert12 => lastReverted, "revert12 failed");
+    assert(revert13 => lastReverted, "revert13 failed");
+    assert(revert14 => lastReverted, "revert14 failed");
+    assert(revert15 => lastReverted, "revert15 failed");
+    assert(revert16 => lastReverted, "revert16 failed");
+    assert(revert17 => lastReverted, "revert17 failed");
+    assert(revert18 => lastReverted, "revert18 failed");
+    assert(revert19 => lastReverted, "revert19 failed");
+    assert(revert20 => lastReverted, "revert20 failed");
+
+    assert(lastReverted => revert1  || revert2  || revert3  ||
+                           revert4  || revert5  || revert6  ||
+                           revert7  || revert8  || revert9  ||
+                           revert10 || revert11 || revert12 ||
+                           revert13 || revert14 || revert15 ||
+                           revert16 || revert17 || revert18 ||
+                           revert19 || revert20, "Revert rules are not covering all the cases");
+}
 
 // Verify that variables behave correctly on heal
 rule heal(uint256 rad) {
@@ -637,6 +765,7 @@ rule fold(bytes32 i, address u, int256 rate_) {
 }
 
 // Verify revert rules on fold
+// TODO: Review timeout
 rule fold_revert(bytes32 i, address u, int256 rate_) {
     env e;
 
@@ -683,9 +812,9 @@ rule fold_revert(bytes32 i, address u, int256 rate_) {
     assert(revert13 => lastReverted, "revert13 failed");
     assert(revert14 => lastReverted, "revert14 failed");
 
-    assert(lastReverted => revert1  || revert2  || revert3 ||
-                           revert4  || revert5  || revert6 ||
-                           revert7  || revert8  || revert9 ||
-                           revert10 || revert11 || revert12||
+    assert(lastReverted => revert1  || revert2  || revert3  ||
+                           revert4  || revert5  || revert6  ||
+                           revert7  || revert8  || revert9  ||
+                           revert10 || revert11 || revert12 ||
                            revert13 || revert14, "Revert rules are not covering all the cases");
 }
