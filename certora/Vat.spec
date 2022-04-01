@@ -478,7 +478,169 @@ rule move_revert(address src, address dst, uint256 rad) {
                            revert4, "Revert rules are not covering all the cases");
 }
 
-// TODO: frob
+// Verify that variables behave correctly on frob
+rule frob(bytes32 i, address u, address v, address w, int256 dink, int256 dart) {
+    env e;
+
+    bytes32 otherIlk;
+    address otherUsrU;
+    address otherUsrV;
+    address otherUsrW;
+    require((otherIlk != i || otherUsrU != u) && (otherIlk != i || otherUsrV != v) && otherUsrW != w);
+
+    uint256 ArtBefore; uint256 rateBefore; uint256 spotBefore; uint256 lineBefore; uint256 dustBefore;
+    ArtBefore, rateBefore, spotBefore, lineBefore, dustBefore = ilks(i);
+
+    uint256 inkBefore; uint256 artBefore;
+    inkBefore, artBefore = urns(i, u);
+
+    uint256 gemBefore = gem(i, v);
+    uint256 daiBefore = dai(w);
+    uint256 debtBefore = debt();
+
+    uint256 inkOtherBefore; uint256 artOtherBefore;
+    inkOtherBefore, artOtherBefore = urns(otherIlk, otherUsrU);
+
+    uint256 gemOtherBefore = gem(otherIlk, otherUsrV);
+    uint256 daiOtherBefore = dai(otherUsrW);
+
+    frob(e, i, u, v, w, dink, dart);
+
+    uint256 ArtAfter; uint256 rateAfter; uint256 spotAfter; uint256 lineAfter; uint256 dustAfter;
+    ArtAfter, rateAfter, spotAfter, lineAfter, dustAfter = ilks(i);
+
+    uint256 inkAfter; uint256 artAfter;
+    inkAfter, artAfter = urns(i, u);
+
+    uint256 gemAfter = gem(i, v);
+    uint256 daiAfter = dai(w);
+    uint256 debtAfter = debt();
+
+    uint256 inkOtherAfter; uint256 artOtherAfter;
+    inkOtherAfter, artOtherAfter = urns(otherIlk, otherUsrU);
+
+    uint256 gemOtherAfter = gem(otherIlk, otherUsrV);
+    uint256 daiOtherAfter = dai(otherUsrW);
+
+    assert(to_mathint(inkAfter) == to_mathint(inkBefore) + to_mathint(dink), "frob did not set u ink as expected");
+    assert(to_mathint(artAfter) == to_mathint(artBefore) + to_mathint(dart), "frob did not set u art as expected");
+    assert(to_mathint(ArtAfter) == to_mathint(ArtBefore) + to_mathint(dart), "frob did not set Art as expected");
+    assert(to_mathint(debtAfter) == to_mathint(debtBefore) + to_mathint(rateBefore) * to_mathint(dart), "frob did not set debt as expected");
+    assert(to_mathint(gemAfter) == to_mathint(gemBefore) - to_mathint(dink), "frob did not set v gem as expected");
+    assert(to_mathint(daiAfter) == to_mathint(daiBefore) + to_mathint(rateBefore) * to_mathint(dart), "frob did not set w dai as expected");
+    assert(to_mathint(inkOtherAfter) == to_mathint(inkOtherBefore), "frob did not keep other ink as expected");
+    assert(to_mathint(artOtherAfter) == to_mathint(artOtherBefore), "frob did not keep other art as expected");
+    assert(rateAfter == rateBefore, "frob did not keep rate as expected");
+    assert(spotAfter == spotBefore, "frob did not keep spot as expected");
+    assert(lineAfter == lineBefore, "frob did not keep line as expected");
+    assert(dustAfter == dustBefore, "frob did not keep dust as expected");
+    assert(gemOtherAfter == gemOtherBefore, "frob did not keep other gem as expected");
+    assert(daiOtherAfter == daiOtherBefore, "frob did not keep other dai as expected");
+}
+
+// Verify revert rules on frob
+// TODO: Review timeout
+rule frob_revert(bytes32 i, address u, address v, address w, int256 dink, int256 dart) {
+    env e;
+
+    uint256 live = live();
+
+    bool wishU = u == e.msg.sender || can(u, e.msg.sender) == 1;
+    bool wishV = v == e.msg.sender || can(v, e.msg.sender) == 1;
+    bool wishW = w == e.msg.sender || can(w, e.msg.sender) == 1;
+
+    uint256 Line = Line();
+
+    uint256 Art; uint256 rate; uint256 spot; uint256 line; uint256 dust;
+    Art, rate, spot, line, dust = ilks(i);
+
+    uint256 ink; uint256 art;
+    ink, art = urns(i, u);
+
+    uint256 gem = gem(i, v);
+    uint256 dai = dai(w);
+    uint256 debt = debt();
+
+    mathint inkFinal = to_mathint(ink) + to_mathint(dink);
+    mathint artFinal = to_mathint(art) + to_mathint(dart);
+    mathint ArtFinal = to_mathint(Art) + to_mathint(dart);
+    mathint debtFinal = to_mathint(debt) + to_mathint(rate) * to_mathint(dart);
+
+    frob@withrevert(e, i, u, v, w, dink, dart);
+
+    bool revert1  = e.msg.value > 0;
+    bool revert2  = live != 1;
+    bool revert3  = rate == 0;
+    bool revert4  = to_mathint(dink) == min_int256();
+    bool revert5  = dink < 0 && to_mathint(ink) + to_mathint(dink) < 0;
+    bool revert6  = dink > 0 && to_mathint(ink) + to_mathint(dink) > max_uint256;
+    bool revert7  = to_mathint(dart) == min_int256();
+    bool revert8  = dart < 0 && to_mathint(art) + to_mathint(dart) < 0;
+    bool revert9  = dart > 0 && to_mathint(art) + to_mathint(dart) > max_uint256;
+    bool revert10 = dart < 0 && to_mathint(Art) + to_mathint(dart) < 0;
+    bool revert11 = dart > 0 && to_mathint(Art) + to_mathint(dart) > max_uint256;
+    bool revert12 = rate > max_int256();
+    bool revert13 = to_mathint(rate) * to_mathint(dart) < min_int256() || to_mathint(rate) * to_mathint(dart) > max_int256();
+    bool revert14 = rate * artFinal > max_uint256;
+    bool revert15 = to_mathint(rate) * to_mathint(dart) == min_int256();
+    bool revert16 = dart < 0 && to_mathint(debt) + to_mathint(rate) * to_mathint(dart) < 0;
+    bool revert17 = dart > 0 && to_mathint(debt) + to_mathint(rate) * to_mathint(dart) > max_uint256;
+    bool revert18 = ArtFinal * rate > max_uint256;
+    bool revert19 = dart > 0 && (ArtFinal * rate > line || debtFinal > Line);
+    bool revert20 = inkFinal * spot > max_uint256;
+    bool revert21 = (dart > 0 || dink < 0) && rate * artFinal > inkFinal * spot;
+    bool revert22 = (dart > 0 || dink < 0) && !wishU;
+    bool revert23 = dink > 0 && !wishV;
+    bool revert24 = dart < 0 && !wishW;
+    bool revert25 = artFinal > 0 && rate * artFinal < dust;
+    bool revert26 = dink < 0 && to_mathint(gem) - to_mathint(dink) > max_uint256;
+    bool revert27 = dink > 0 && to_mathint(gem) - to_mathint(dink) < 0;
+    bool revert28 = to_mathint(rate) * to_mathint(dart) == min_int256();
+    bool revert29 = dart < 0 && to_mathint(dai) + to_mathint(rate) * to_mathint(dart) < 0;
+    bool revert30 = dart > 0 && to_mathint(dai) + to_mathint(rate) * to_mathint(dart) > max_uint256;
+
+    assert(revert1  => lastReverted, "revert1 failed");
+    assert(revert2  => lastReverted, "revert2 failed");
+    assert(revert3  => lastReverted, "revert3 failed");
+    assert(revert4  => lastReverted, "revert4 failed");
+    assert(revert5  => lastReverted, "revert5 failed");
+    assert(revert6  => lastReverted, "revert6 failed");
+    assert(revert7  => lastReverted, "revert7 failed");
+    assert(revert8  => lastReverted, "revert8 failed");
+    assert(revert9  => lastReverted, "revert9 failed");
+    assert(revert10 => lastReverted, "revert10 failed");
+    assert(revert11 => lastReverted, "revert11 failed");
+    assert(revert12 => lastReverted, "revert12 failed");
+    assert(revert13 => lastReverted, "revert13 failed");
+    assert(revert14 => lastReverted, "revert14 failed");
+    assert(revert15 => lastReverted, "revert15 failed");
+    assert(revert16 => lastReverted, "revert16 failed");
+    assert(revert17 => lastReverted, "revert17 failed");
+    assert(revert18 => lastReverted, "revert18 failed");
+    assert(revert19 => lastReverted, "revert19 failed");
+    assert(revert20 => lastReverted, "revert20 failed");
+    assert(revert21 => lastReverted, "revert21 failed");
+    assert(revert22 => lastReverted, "revert22 failed");
+    assert(revert23 => lastReverted, "revert23 failed");
+    assert(revert24 => lastReverted, "revert24 failed");
+    assert(revert25 => lastReverted, "revert25 failed");
+    assert(revert26 => lastReverted, "revert26 failed");
+    assert(revert27 => lastReverted, "revert27 failed");
+    assert(revert28 => lastReverted, "revert28 failed");
+    assert(revert29 => lastReverted, "revert29 failed");
+    assert(revert30 => lastReverted, "revert30 failed");
+
+    assert(lastReverted => revert1  || revert2  || revert3  ||
+                           revert4  || revert5  || revert6  ||
+                           revert7  || revert8  || revert9  ||
+                           revert10 || revert11 || revert12 ||
+                           revert13 || revert14 || revert15 ||
+                           revert16 || revert17 || revert18 ||
+                           revert19 || revert20 || revert21 ||
+                           revert22 || revert23 || revert24 ||
+                           revert25 || revert26 || revert27 ||
+                           revert28 || revert29 || revert30, "Revert rules are not covering all the cases");
+}
 
 // Verify that variables behave correctly on fork
 rule fork(bytes32 ilk, address src, address dst, int256 dink, int256 dart) {
