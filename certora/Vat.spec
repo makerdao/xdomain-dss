@@ -572,32 +572,26 @@ rule frob_revert(bytes32 i, address u, address v, address w, int256 dink, int256
     bool revert2  = live != 1;
     bool revert3  = rate == 0;
     bool revert4  = to_mathint(dink) == min_int256();
-    bool revert5  = dink < 0 && to_mathint(ink) + to_mathint(dink) < 0;
-    bool revert6  = dink > 0 && to_mathint(ink) + to_mathint(dink) > max_uint256;
-    bool revert7  = to_mathint(dart) == min_int256();
-    bool revert8  = dart < 0 && to_mathint(art) + to_mathint(dart) < 0;
-    bool revert9  = dart > 0 && to_mathint(art) + to_mathint(dart) > max_uint256;
-    bool revert10 = dart < 0 && to_mathint(Art) + to_mathint(dart) < 0;
-    bool revert11 = dart > 0 && to_mathint(Art) + to_mathint(dart) > max_uint256;
-    bool revert12 = rate > max_int256();
-    bool revert13 = to_mathint(rate) * to_mathint(dart) < min_int256() || to_mathint(rate) * to_mathint(dart) > max_int256();
-    bool revert14 = rate * artFinal > max_uint256;
-    bool revert15 = to_mathint(rate) * to_mathint(dart) == min_int256();
-    bool revert16 = dart < 0 && to_mathint(debt) + to_mathint(rate) * to_mathint(dart) < 0;
-    bool revert17 = dart > 0 && to_mathint(debt) + to_mathint(rate) * to_mathint(dart) > max_uint256;
-    bool revert18 = ArtFinal * rate > max_uint256;
-    bool revert19 = dart > 0 && (ArtFinal * rate > line || debtFinal > Line);
-    bool revert20 = inkFinal * spot > max_uint256;
-    bool revert21 = (dart > 0 || dink < 0) && rate * artFinal > inkFinal * spot;
-    bool revert22 = (dart > 0 || dink < 0) && !wishU;
-    bool revert23 = dink > 0 && !wishV;
-    bool revert24 = dart < 0 && !wishW;
-    bool revert25 = artFinal > 0 && rate * artFinal < dust;
-    bool revert26 = dink < 0 && to_mathint(gem) - to_mathint(dink) > max_uint256;
-    bool revert27 = dink > 0 && to_mathint(gem) - to_mathint(dink) < 0;
-    bool revert28 = to_mathint(rate) * to_mathint(dart) == min_int256();
-    bool revert29 = dart < 0 && to_mathint(dai) + to_mathint(rate) * to_mathint(dart) < 0;
-    bool revert30 = dart > 0 && to_mathint(dai) + to_mathint(rate) * to_mathint(dart) > max_uint256;
+    bool revert5  = to_mathint(ink) + to_mathint(dink) < 0 || to_mathint(ink) + to_mathint(dink) > max_uint256;
+    bool revert6  = to_mathint(dart) == min_int256();
+    bool revert7  = to_mathint(art) + to_mathint(dart) < 0 || to_mathint(art) + to_mathint(dart) > max_uint256;
+    bool revert8  = to_mathint(Art) + to_mathint(dart) < 0 || to_mathint(Art) + to_mathint(dart) > max_uint256;
+    bool revert9  = rate > max_int256();
+    bool revert10 = to_mathint(rate) * to_mathint(dart) < min_int256() || to_mathint(rate) * to_mathint(dart) > max_int256();
+    bool revert11 = rate * artFinal > max_uint256;
+    bool revert12 = to_mathint(rate) * to_mathint(dart) == min_int256();
+    bool revert13 = to_mathint(debt) + to_mathint(rate) * to_mathint(dart) < 0 || to_mathint(debt) + to_mathint(rate) * to_mathint(dart) > max_uint256;
+    bool revert14 = ArtFinal * rate > max_uint256;
+    bool revert15 = dart > 0 && (ArtFinal * rate > line || debtFinal > Line);
+    bool revert16 = inkFinal * spot > max_uint256;
+    bool revert17 = (dart > 0 || dink < 0) && rate * artFinal > inkFinal * spot;
+    bool revert18 = (dart > 0 || dink < 0) && !wishU;
+    bool revert19 = dink > 0 && !wishV;
+    bool revert20 = dart < 0 && !wishW;
+    bool revert21 = artFinal > 0 && rate * artFinal < dust;
+    bool revert22 = to_mathint(gem) - to_mathint(dink) < 0 || to_mathint(gem) - to_mathint(dink) > max_uint256;
+    bool revert23 = to_mathint(rate) * to_mathint(dart) == min_int256();
+    bool revert24 = to_mathint(dai) + to_mathint(rate) * to_mathint(dart) < 0 || to_mathint(dai) + to_mathint(rate) * to_mathint(dart) > max_uint256;
 
     assert(revert1  => lastReverted, "revert1 failed");
     assert(revert2  => lastReverted, "revert2 failed");
@@ -623,12 +617,6 @@ rule frob_revert(bytes32 i, address u, address v, address w, int256 dink, int256
     assert(revert22 => lastReverted, "revert22 failed");
     assert(revert23 => lastReverted, "revert23 failed");
     assert(revert24 => lastReverted, "revert24 failed");
-    assert(revert25 => lastReverted, "revert25 failed");
-    assert(revert26 => lastReverted, "revert26 failed");
-    assert(revert27 => lastReverted, "revert27 failed");
-    assert(revert28 => lastReverted, "revert28 failed");
-    assert(revert29 => lastReverted, "revert29 failed");
-    assert(revert30 => lastReverted, "revert30 failed");
 
     assert(lastReverted => revert1  || revert2  || revert3  ||
                            revert4  || revert5  || revert6  ||
@@ -637,9 +625,7 @@ rule frob_revert(bytes32 i, address u, address v, address w, int256 dink, int256
                            revert13 || revert14 || revert15 ||
                            revert16 || revert17 || revert18 ||
                            revert19 || revert20 || revert21 ||
-                           revert22 || revert23 || revert24 ||
-                           revert25 || revert26 || revert27 ||
-                           revert28 || revert29 || revert30, "Revert rules are not covering all the cases");
+                           revert22 || revert23 || revert24, "Revert rules are not covering all the cases");
 }
 
 // Verify that variables behave correctly on fork
@@ -708,23 +694,19 @@ rule fork_revert(bytes32 ilk, address src, address dst, int256 dink, int256 dart
     bool revert1  = e.msg.value > 0;
     bool revert2  = to_mathint(dink) == min_int256();
     bool revert3  = to_mathint(dart) == min_int256();
-    bool revert4  = dink < 0 && to_mathint(inkSrc) - to_mathint(dink) > max_uint256;
-    bool revert5  = dink > 0 && to_mathint(inkSrc) - to_mathint(dink) < 0;
-    bool revert6  = dart < 0 && to_mathint(artSrc) - to_mathint(dart) > max_uint256;
-    bool revert7  = dart > 0 && to_mathint(artSrc) - to_mathint(dart) < 0;
-    bool revert8  = src != dst && dink < 0 && to_mathint(inkDst) + to_mathint(dink) < 0;
-    bool revert9  = src != dst && dink > 0 && to_mathint(inkDst) + to_mathint(dink) > max_uint256;
-    bool revert10 = src != dst && dart < 0 && to_mathint(artDst) + to_mathint(dart) < 0;
-    bool revert11 = src != dst && dart > 0 && to_mathint(artDst) + to_mathint(dart) > max_uint256;
-    bool revert12 = artSrcFinal * to_mathint(rate) > max_uint256;
-    bool revert13 = artDstFinal * to_mathint(rate) > max_uint256;
-    bool revert14 = !wishSrc || !wishDst;
-    bool revert15 = inkSrcFinal * to_mathint(spot) > max_uint256;
-    bool revert16 = artSrcFinal * to_mathint(rate) > inkSrcFinal * to_mathint(spot);
-    bool revert17 = inkDstFinal * to_mathint(spot) > max_uint256;
-    bool revert18 = artDstFinal * to_mathint(rate) > inkDstFinal * to_mathint(spot);
-    bool revert19 = artSrcFinal * to_mathint(rate) < dust && artSrcFinal != 0;
-    bool revert20 = artDstFinal * to_mathint(rate) < dust && artDstFinal != 0;
+    bool revert4  = to_mathint(inkSrc) - to_mathint(dink) < 0 || to_mathint(inkSrc) - to_mathint(dink) > max_uint256;
+    bool revert5  = to_mathint(artSrc) - to_mathint(dart) < 0 || to_mathint(artSrc) - to_mathint(dart) > max_uint256;
+    bool revert6  = src != dst && (to_mathint(inkDst) + to_mathint(dink) < 0 || to_mathint(inkDst) + to_mathint(dink) > max_uint256);
+    bool revert7  = src != dst && (to_mathint(artDst) + to_mathint(dart) < 0 || to_mathint(artDst) + to_mathint(dart) > max_uint256);
+    bool revert8  = artSrcFinal * to_mathint(rate) > max_uint256;
+    bool revert9  = artDstFinal * to_mathint(rate) > max_uint256;
+    bool revert10 = !wishSrc || !wishDst;
+    bool revert11 = inkSrcFinal * to_mathint(spot) > max_uint256;
+    bool revert12 = artSrcFinal * to_mathint(rate) > inkSrcFinal * to_mathint(spot);
+    bool revert13 = inkDstFinal * to_mathint(spot) > max_uint256;
+    bool revert14 = artDstFinal * to_mathint(rate) > inkDstFinal * to_mathint(spot);
+    bool revert15 = artSrcFinal * to_mathint(rate) < dust && artSrcFinal != 0;
+    bool revert16 = artDstFinal * to_mathint(rate) < dust && artDstFinal != 0;
 
     assert(revert1  => lastReverted, "revert1 failed");
     assert(revert2  => lastReverted, "revert2 failed");
@@ -742,18 +724,13 @@ rule fork_revert(bytes32 ilk, address src, address dst, int256 dink, int256 dart
     assert(revert14 => lastReverted, "revert14 failed");
     assert(revert15 => lastReverted, "revert15 failed");
     assert(revert16 => lastReverted, "revert16 failed");
-    assert(revert17 => lastReverted, "revert17 failed");
-    assert(revert18 => lastReverted, "revert18 failed");
-    assert(revert19 => lastReverted, "revert19 failed");
-    assert(revert20 => lastReverted, "revert20 failed");
 
     assert(lastReverted => revert1  || revert2  || revert3  ||
                            revert4  || revert5  || revert6  ||
                            revert7  || revert8  || revert9  ||
                            revert10 || revert11 || revert12 ||
                            revert13 || revert14 || revert15 ||
-                           revert16 || revert17 || revert18 ||
-                           revert19 || revert20, "Revert rules are not covering all the cases");
+                           revert16, "Revert rules are not covering all the cases");
 }
 
 // Verify that variables behave correctly on grab
@@ -838,23 +815,16 @@ rule grab_revert(bytes32 i, address u, address v, address w, int256 dink, int256
     bool revert1  = e.msg.value > 0;
     bool revert2  = ward != 1;
     bool revert3  = to_mathint(dink) == min_int256();
-    bool revert4  = dink < 0 && to_mathint(ink) + to_mathint(dink) < 0;
-    bool revert5  = dink > 0 && to_mathint(ink) + to_mathint(dink) > max_uint256;
-    bool revert6  = to_mathint(dart) == min_int256();
-    bool revert7  = dart < 0 && to_mathint(art) + to_mathint(dart) < 0;
-    bool revert8  = dart > 0 && to_mathint(art) + to_mathint(dart) > max_uint256;
-    bool revert9  = dart < 0 && to_mathint(Art) + to_mathint(dart) < 0;
-    bool revert10 = dart > 0 && to_mathint(Art) + to_mathint(dart) > max_uint256;
-    bool revert11 = to_mathint(rate) > max_int256();
-    bool revert12 = dart < 0 && to_mathint(rate) * to_mathint(dart) < min_int256();
-    bool revert13 = dart > 0 && to_mathint(rate) * to_mathint(dart) > max_int256();
-    bool revert14 = dink < 0 && to_mathint(gem) - to_mathint(dink) > max_uint256;
-    bool revert15 = dink > 0 && to_mathint(gem) - to_mathint(dink) < 0;
-    bool revert16 = to_mathint(rate) * to_mathint(dart) == min_int256();
-    bool revert17 = dart < 0 && to_mathint(sin) - to_mathint(rate) * to_mathint(dart) > max_uint256;
-    bool revert18 = dart > 0 && to_mathint(sin) - to_mathint(rate) * to_mathint(dart) < 0;
-    bool revert19 = dart < 0 && to_mathint(vice) - to_mathint(rate) * to_mathint(dart) > max_uint256;
-    bool revert20 = dart > 0 && to_mathint(vice) - to_mathint(rate) * to_mathint(dart) < 0;
+    bool revert4  = to_mathint(ink) + to_mathint(dink) < 0 || to_mathint(ink) + to_mathint(dink) > max_uint256;
+    bool revert5  = to_mathint(dart) == min_int256();
+    bool revert6  = to_mathint(art) + to_mathint(dart) < 0 || to_mathint(art) + to_mathint(dart) > max_uint256;
+    bool revert7  = to_mathint(Art) + to_mathint(dart) < 0 || to_mathint(Art) + to_mathint(dart) > max_uint256;
+    bool revert8  = to_mathint(rate) > max_int256();
+    bool revert9  = to_mathint(rate) * to_mathint(dart) < min_int256() || to_mathint(rate) * to_mathint(dart) > max_int256();
+    bool revert10 = to_mathint(gem) - to_mathint(dink) < 0 || to_mathint(gem) - to_mathint(dink) > max_uint256;
+    bool revert11 = to_mathint(rate) * to_mathint(dart) == min_int256();
+    bool revert12 = to_mathint(sin) - to_mathint(rate) * to_mathint(dart) < 0 || to_mathint(sin) - to_mathint(rate) * to_mathint(dart) > max_uint256;
+    bool revert13 = to_mathint(vice) - to_mathint(rate) * to_mathint(dart) < 0 || to_mathint(vice) - to_mathint(rate) * to_mathint(dart) > max_uint256;
 
     assert(revert1  => lastReverted, "revert1 failed");
     assert(revert2  => lastReverted, "revert2 failed");
@@ -869,21 +839,12 @@ rule grab_revert(bytes32 i, address u, address v, address w, int256 dink, int256
     assert(revert11 => lastReverted, "revert11 failed");
     assert(revert12 => lastReverted, "revert12 failed");
     assert(revert13 => lastReverted, "revert13 failed");
-    assert(revert14 => lastReverted, "revert14 failed");
-    assert(revert15 => lastReverted, "revert15 failed");
-    assert(revert16 => lastReverted, "revert16 failed");
-    assert(revert17 => lastReverted, "revert17 failed");
-    assert(revert18 => lastReverted, "revert18 failed");
-    assert(revert19 => lastReverted, "revert19 failed");
-    assert(revert20 => lastReverted, "revert20 failed");
 
     assert(lastReverted => revert1  || revert2  || revert3  ||
                            revert4  || revert5  || revert6  ||
                            revert7  || revert8  || revert9  ||
                            revert10 || revert11 || revert12 ||
-                           revert13 || revert14 || revert15 ||
-                           revert16 || revert17 || revert18 ||
-                           revert19 || revert20, "Revert rules are not covering all the cases");
+                           revert13, "Revert rules are not covering all the cases");
 }
 
 // Verify that variables behave correctly on heal
@@ -1060,16 +1021,12 @@ rule fold_revert(bytes32 i, address u, int256 rate_) {
     bool revert2  = ward != 1;
     bool revert3  = live != 1;
     bool revert4  = to_mathint(rate_) == min_int256();
-    bool revert5  = rate_ < 0 && to_mathint(rate) + to_mathint(rate_) < 0;
-    bool revert6  = rate_ > 0 && to_mathint(rate) + to_mathint(rate_) > max_uint256;
-    bool revert7  = Art > max_int256();
-    bool revert8  = rate_ < 0 && to_mathint(Art) * to_mathint(rate_) < min_int256();
-    bool revert9  = rate_ > 0 && to_mathint(Art) * to_mathint(rate_) > max_int256();
-    bool revert10 = rad == min_int256();
-    bool revert11 = rate_ < 0 && to_mathint(dai) + rad < 0;
-    bool revert12 = rate_ > 0 && to_mathint(dai) + rad > max_uint256;
-    bool revert13 = rate_ < 0 && to_mathint(debt) + rad < 0;
-    bool revert14 = rate_ > 0 && to_mathint(debt) + rad > max_uint256;
+    bool revert5  = to_mathint(rate) + to_mathint(rate_) < 0 || to_mathint(rate) + to_mathint(rate_) > max_uint256;
+    bool revert6  = Art > max_int256();
+    bool revert7  = to_mathint(Art) * to_mathint(rate_) < min_int256() || to_mathint(Art) * to_mathint(rate_) > max_int256();
+    bool revert8  = rad == min_int256();
+    bool revert9  = to_mathint(dai) + rad < 0 || to_mathint(dai) + rad > max_uint256;
+    bool revert10 = to_mathint(debt) + rad < 0 || to_mathint(debt) + rad > max_uint256;
 
     assert(revert1  => lastReverted, "revert1 failed");
     assert(revert2  => lastReverted, "revert2 failed");
@@ -1081,14 +1038,9 @@ rule fold_revert(bytes32 i, address u, int256 rate_) {
     assert(revert8  => lastReverted, "revert8 failed");
     assert(revert9  => lastReverted, "revert9 failed");
     assert(revert10 => lastReverted, "revert10 failed");
-    assert(revert11 => lastReverted, "revert11 failed");
-    assert(revert12 => lastReverted, "revert12 failed");
-    assert(revert13 => lastReverted, "revert13 failed");
-    assert(revert14 => lastReverted, "revert14 failed");
 
     assert(lastReverted => revert1  || revert2  || revert3  ||
                            revert4  || revert5  || revert6  ||
                            revert7  || revert8  || revert9  ||
-                           revert10 || revert11 || revert12 ||
-                           revert13 || revert14, "Revert rules are not covering all the cases");
+                           revert10, "Revert rules are not covering all the cases");
 }
