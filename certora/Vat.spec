@@ -480,7 +480,119 @@ rule move_revert(address src, address dst, uint256 rad) {
 
 // TODO: frob
 
-// TODO: fork
+// Verify that variables behave correctly on fork
+rule fork(bytes32 ilk, address src, address dst, int256 dink, int256 dart) {
+    env e;
+
+    bytes32 otherIlk;
+    address otherUsr;
+    require(otherIlk != ilk || otherUsr != src && otherUsr != dst);
+
+    uint256 inkSrcBefore; uint256 artSrcBefore;
+    inkSrcBefore, artSrcBefore = urns(ilk, src);
+
+    uint256 inkDstBefore; uint256 artDstBefore;
+    inkDstBefore, artDstBefore = urns(ilk, dst);
+
+    uint256 inkOtherBefore; uint256 artOtherBefore;
+    inkOtherBefore, artOtherBefore = urns(otherIlk, otherUsr);
+
+    fork(e, ilk, src, dst, dink, dart);
+
+    uint256 inkSrcAfter; uint256 artSrcAfter;
+    inkSrcAfter, artSrcAfter = urns(ilk, src);
+
+    uint256 inkDstAfter; uint256 artDstAfter;
+    inkDstAfter, artDstAfter = urns(ilk, dst);
+
+    uint256 inkOtherAfter; uint256 artOtherAfter;
+    inkOtherAfter, artOtherAfter = urns(otherIlk, otherUsr);
+
+    assert(src != dst => to_mathint(inkSrcAfter) == to_mathint(inkSrcBefore) - to_mathint(dink), "fork did not set src ink as expected");
+    assert(src != dst => to_mathint(artSrcAfter) == to_mathint(artSrcBefore) - to_mathint(dart), "fork did not set src art as expected");
+    assert(src != dst => to_mathint(inkDstAfter) == to_mathint(inkDstBefore) + to_mathint(dink), "fork did not set dst ink as expected");
+    assert(src != dst => to_mathint(artDstAfter) == to_mathint(artDstBefore) + to_mathint(dart), "fork did not set dst art as expected");
+    assert(src == dst => to_mathint(inkSrcAfter) == to_mathint(inkSrcBefore), "fork did not keep src/dst ink as expected");
+    assert(src == dst => to_mathint(artSrcAfter) == to_mathint(artSrcBefore), "fork did not keep src/dst art as expected");
+    assert(to_mathint(inkOtherAfter) == to_mathint(inkOtherBefore), "fork did not keep other ink as expected");
+    assert(to_mathint(artOtherAfter) == to_mathint(artOtherBefore), "fork did not keep other art as expected");
+}
+
+// Verify revert rules on fork
+rule fork_revert(bytes32 ilk, address src, address dst, int256 dink, int256 dart) {
+    env e;
+
+    uint256 ward = wards(e.msg.sender);
+
+    bool wishSrc = src == e.msg.sender || can(src, e.msg.sender) == 1;
+    bool wishDst = dst == e.msg.sender || can(dst, e.msg.sender) == 1;
+
+    uint256 Art; uint256 rate; uint256 spot; uint256 line; uint256 dust;
+    Art, rate, spot, line, dust = ilks(ilk);
+
+    uint256 inkSrc; uint256 artSrc;
+    inkSrc, artSrc = urns(ilk, src);
+
+    uint256 inkDst; uint256 artDst;
+    inkDst, artDst = urns(ilk, dst);
+
+    mathint inkSrcFinal = src != dst ? to_mathint(inkSrc) - to_mathint(dink) : to_mathint(inkSrc);
+    mathint artSrcFinal = src != dst ? to_mathint(artSrc) - to_mathint(dart) : to_mathint(artSrc);
+    mathint inkDstFinal = src != dst ? to_mathint(inkDst) + to_mathint(dink) : to_mathint(inkDst);
+    mathint artDstFinal = src != dst ? to_mathint(artDst) + to_mathint(dart) : to_mathint(artDst);
+
+    fork@withrevert(e, ilk, src, dst, dink, dart);
+
+    bool revert1  = e.msg.value > 0;
+    bool revert2  = to_mathint(dink) == min_int256();
+    bool revert3  = to_mathint(dart) == min_int256();
+    bool revert4  = dink < 0 && to_mathint(inkSrc) - to_mathint(dink) > max_uint256;
+    bool revert5  = dink > 0 && to_mathint(inkSrc) - to_mathint(dink) < 0;
+    bool revert6  = dart < 0 && to_mathint(artSrc) - to_mathint(dart) > max_uint256;
+    bool revert7  = dart > 0 && to_mathint(artSrc) - to_mathint(dart) < 0;
+    bool revert8  = src != dst && dink < 0 && to_mathint(inkDst) + to_mathint(dink) < 0;
+    bool revert9  = src != dst && dink > 0 && to_mathint(inkDst) + to_mathint(dink) > max_uint256;
+    bool revert10 = src != dst && dart < 0 && to_mathint(artDst) + to_mathint(dart) < 0;
+    bool revert11 = src != dst && dart > 0 && to_mathint(artDst) + to_mathint(dart) > max_uint256;
+    bool revert12 = artSrcFinal * to_mathint(rate) > max_uint256;
+    bool revert13 = artDstFinal * to_mathint(rate) > max_uint256;
+    bool revert14 = !wishSrc || !wishDst;
+    bool revert15 = inkSrcFinal * to_mathint(spot) > max_uint256;
+    bool revert16 = artSrcFinal * to_mathint(rate) > inkSrcFinal * to_mathint(spot);
+    bool revert17 = inkDstFinal * to_mathint(spot) > max_uint256;
+    bool revert18 = artDstFinal * to_mathint(rate) > inkDstFinal * to_mathint(spot);
+    bool revert19 = artSrcFinal * to_mathint(rate) < dust && artSrcFinal != 0;
+    bool revert20 = artDstFinal * to_mathint(rate) < dust && artDstFinal != 0;
+
+    assert(revert1  => lastReverted, "revert1 failed");
+    assert(revert2  => lastReverted, "revert2 failed");
+    assert(revert3  => lastReverted, "revert3 failed");
+    assert(revert4  => lastReverted, "revert4 failed");
+    assert(revert5  => lastReverted, "revert5 failed");
+    assert(revert6  => lastReverted, "revert6 failed");
+    assert(revert7  => lastReverted, "revert7 failed");
+    assert(revert8  => lastReverted, "revert8 failed");
+    assert(revert9  => lastReverted, "revert9 failed");
+    assert(revert10 => lastReverted, "revert10 failed");
+    assert(revert11 => lastReverted, "revert11 failed");
+    assert(revert12 => lastReverted, "revert12 failed");
+    assert(revert13 => lastReverted, "revert13 failed");
+    assert(revert14 => lastReverted, "revert14 failed");
+    assert(revert15 => lastReverted, "revert15 failed");
+    assert(revert16 => lastReverted, "revert16 failed");
+    assert(revert17 => lastReverted, "revert17 failed");
+    assert(revert18 => lastReverted, "revert18 failed");
+    assert(revert19 => lastReverted, "revert19 failed");
+    assert(revert20 => lastReverted, "revert20 failed");
+
+    assert(lastReverted => revert1  || revert2  || revert3  ||
+                           revert4  || revert5  || revert6  ||
+                           revert7  || revert8  || revert9  ||
+                           revert10 || revert11 || revert12 ||
+                           revert13 || revert14 || revert15 ||
+                           revert16 || revert17 || revert18 ||
+                           revert19 || revert20, "Revert rules are not covering all the cases");
+}
 
 // Verify that variables behave correctly on grab
 rule grab(bytes32 i, address u, address v, address w, int256 dink, int256 dart) {
@@ -561,8 +673,8 @@ rule grab_revert(bytes32 i, address u, address v, address w, int256 dink, int256
 
     grab@withrevert(e, i, u, v, w, dink, dart);
 
-    bool revert1 = e.msg.value > 0;
-    bool revert2 = ward != 1;
+    bool revert1  = e.msg.value > 0;
+    bool revert2  = ward != 1;
     bool revert3  = to_mathint(dink) == min_int256();
     bool revert4  = dink < 0 && to_mathint(ink) + to_mathint(dink) < 0;
     bool revert5  = dink > 0 && to_mathint(ink) + to_mathint(dink) > max_uint256;
