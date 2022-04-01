@@ -618,7 +618,7 @@ rule grab(bytes32 i, address u, address v, address w, int256 dink, int256 dart) 
     inkOtherBefore, artOtherBefore = urns(otherIlk, otherUsrU);
 
     uint256 gemOtherBefore = gem(otherIlk, otherUsrV);
-    uint256 sinOtherBefore = dai(otherUsrW);
+    uint256 sinOtherBefore = sin(otherUsrW);
 
     grab(e, i, u, v, w, dink, dart);
 
@@ -636,7 +636,7 @@ rule grab(bytes32 i, address u, address v, address w, int256 dink, int256 dart) 
     inkOtherAfter, artOtherAfter = urns(otherIlk, otherUsrU);
 
     uint256 gemOtherAfter = gem(otherIlk, otherUsrV);
-    uint256 sinOtherAfter = dai(otherUsrW);
+    uint256 sinOtherAfter = sin(otherUsrW);
 
     assert(to_mathint(inkAfter) == to_mathint(inkBefore) + to_mathint(dink), "grab did not set u ink as expected");
     assert(to_mathint(artAfter) == to_mathint(artBefore) + to_mathint(dart), "grab did not set u art as expected");
