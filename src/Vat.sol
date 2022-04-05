@@ -94,7 +94,7 @@ contract Vat {
 
     function _sub(uint256 x, int256 y) internal pure returns (uint256 z) {
         unchecked {
-            z = x - uint(y);
+            z = x - uint256(y);
         }
         require(y <= 0 || z <= x);
         require(y >= 0 || z >= x);
