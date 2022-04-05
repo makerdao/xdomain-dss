@@ -85,7 +85,7 @@ contract Vat {
 
     // --- Math ---
     function _add(uint256 x, int256 y) internal pure returns (uint256 z) {
-        unchecked{
+        unchecked {
             z = x + uint256(y);
         }
         require(y >= 0 || z <= x);
@@ -93,7 +93,11 @@ contract Vat {
     }
 
     function _sub(uint256 x, int256 y) internal pure returns (uint256 z) {
-        z = y >= 0 ? x - uint256(y) : x + uint256(-y);
+        unchecked {
+            z = x - uint(y);
+        }
+        require(y <= 0 || z <= x);
+        require(y >= 0 || z >= x);
     }
 
     function _int256(uint256 x) internal pure returns (int256 y) {
