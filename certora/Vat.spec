@@ -27,6 +27,18 @@ definition RAY() returns uint256 = 10^27;
 definition min_int256() returns mathint = -1 * 2^255;
 definition max_int256() returns mathint = 2^255 - 1;
 
+ghost sinSumGhost() returns uint256 {
+    init_state axiom sinSumGhost() == 0;
+}
+
+hook Sstore currentContract.sin[KEY address u] uint256 n (uint256 o) STORAGE {
+    havoc sinSumGhost assuming sinSumGhost@new() == sinSumGhost@old() + n - o;
+}
+
+invariant vice_equals_sum_of_all_sin()
+    vice() == sinSumGhost()
+    filtered { f -> !f.isFallback }
+
 // Verify fallback always reverts
 // In this case is pretty important as we are filtering it out from some invariants/rules
 rule fallback_revert(method f) filtered { f -> f.isFallback } {
