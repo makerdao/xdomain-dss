@@ -35,8 +35,20 @@ hook Sstore currentContract.sin[KEY address u] uint256 n (uint256 o) STORAGE {
     havoc sinSumGhost assuming sinSumGhost@new() == sinSumGhost@old() + n - o;
 }
 
+ghost daiSumGhost() returns uint256 {
+    init_state axiom daiSumGhost() == 0;
+}
+
+hook Sstore currentContract.dai[KEY address u] uint256 n (uint256 o) STORAGE {
+    havoc daiSumGhost assuming daiSumGhost@new() == daiSumGhost@old() + n - o;
+}
+
 invariant vice_equals_sum_of_all_sin()
     vice() == sinSumGhost()
+    filtered { f -> !f.isFallback }
+
+invariant debt_equals_sum_of_all_dai()
+    debt() == daiSumGhost()
     filtered { f -> !f.isFallback }
 
 // Verify fallback always reverts
