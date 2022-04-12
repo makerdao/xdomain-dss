@@ -43,6 +43,14 @@ hook Sstore currentContract.dai[KEY address u] uint256 n (uint256 o) STORAGE {
     havoc daiSumGhost assuming daiSumGhost@new() == daiSumGhost@old() + n - o;
 }
 
+ghost artSumPerIlkGhost(bytes32) returns uint256 {
+    init_state axiom forall bytes32 ilk. artSumPerIlkGhost(ilk) == 0;
+}
+
+hook Sstore currentContract.urns[KEY bytes32 ilk][KEY address u].(offset 1) uint256 n (uint256 o) STORAGE {
+    havoc artSumPerIlkGhost assuming artSumPerIlkGhost@new(ilk) == artSumPerIlkGhost@old(ilk) + n - o;
+}
+
 invariant vice_equals_sum_of_all_sin()
     vice() == sinSumGhost()
     filtered { f -> !f.isFallback }
@@ -50,6 +58,20 @@ invariant vice_equals_sum_of_all_sin()
 invariant debt_equals_sum_of_all_dai()
     debt() == daiSumGhost()
     filtered { f -> !f.isFallback }
+
+rule sum_of_art_per_ilk_equals_Art_of_ilk(bytes32 ilk, method f) {
+    uint256 ArtBefore; uint256 rateBefore; uint256 spotBefore; uint256 lineBefore; uint256 dustBefore;
+    ArtBefore, rateBefore, spotBefore, lineBefore, dustBefore = ilks(ilk);
+    require(ArtBefore == artSumPerIlkGhost(ilk));
+
+    env e;
+    calldataarg arg;
+    f(e, arg);
+
+    uint256 ArtAfter; uint256 rateAfter; uint256 spotAfter; uint256 lineAfter; uint256 dustAfter;
+    ArtAfter, rateAfter, spotAfter, lineAfter, dustAfter = ilks(ilk);
+    assert(ArtAfter == artSumPerIlkGhost(ilk), "art sum inconsistency with accumulator per ilk");
+}
 
 // Verify fallback always reverts
 // In this case is pretty important as we are filtering it out from some invariants/rules
