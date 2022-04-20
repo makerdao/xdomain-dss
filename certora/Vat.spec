@@ -47,7 +47,7 @@ ghost artSumPerIlkGhost(bytes32) returns uint256 {
     init_state axiom forall bytes32 ilk. artSumPerIlkGhost(ilk) == 0;
 }
 
-hook Sstore currentContract.urns[KEY bytes32 ilk][KEY address u].(offset 1) uint256 n (uint256 o) STORAGE {
+hook Sstore currentContract.urns[KEY bytes32 ilk][KEY address u].(offset 32) uint256 n (uint256 o) STORAGE {
     havoc artSumPerIlkGhost assuming artSumPerIlkGhost@new(ilk) == artSumPerIlkGhost@old(ilk) + n - o;
 }
 
