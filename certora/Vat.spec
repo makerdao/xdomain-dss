@@ -43,12 +43,29 @@ hook Sstore currentContract.dai[KEY address u] uint256 n (uint256 o) STORAGE {
     havoc daiSumGhost assuming daiSumGhost@new() == daiSumGhost@old() + n - o;
 }
 
-ghost artSumPerIlkGhost(bytes32) returns uint256 {
-    init_state axiom forall bytes32 ilk. artSumPerIlkGhost(ilk) == 0;
+ghost mapping(bytes32 => uint256) artSumPerIlkGhost {
+    init_state axiom forall bytes32 ilk. artSumPerIlkGhost[ilk] == 0;
 }
 
 hook Sstore currentContract.urns[KEY bytes32 ilk][KEY address u].(offset 32) uint256 n (uint256 o) STORAGE {
-    havoc artSumPerIlkGhost assuming artSumPerIlkGhost@new(ilk) == artSumPerIlkGhost@old(ilk) + n - o;
+    artSumPerIlkGhost[ilk] = artSumPerIlkGhost[ilk] + n - o;
+}
+
+ghost sumOfVaultDebtGhost() returns uint256 {
+    init_state axiom sumOfVaultDebtGhost() == 0;
+}
+
+ghost mapping(bytes32 => uint256) rateGhost {
+    init_state axiom forall bytes32 ilk. rateGhost[ilk] == 0;
+}
+
+hook Sstore currentContract.ilks[KEY bytes32 ilk].(offset 0) uint256 n (uint256 o) STORAGE {
+    havoc sumOfVaultDebtGhost assuming sumOfVaultDebtGhost@new() == sumOfVaultDebtGhost@old() + (n * rateGhost[ilk]) - (o * rateGhost[ilk]);
+}
+
+hook Sstore currentContract.ilks[KEY bytes32 ilk].(offset 32) uint256 n (uint256 o) STORAGE {
+    havoc sumOfVaultDebtGhost assuming sumOfVaultDebtGhost@new() == sumOfVaultDebtGhost@old() + (artSumPerIlkGhost[ilk] * n) - (artSumPerIlkGhost[ilk] * o);
+    rateGhost[ilk] = n;
 }
 
 invariant vice_equals_sum_of_all_sin()
@@ -59,10 +76,26 @@ invariant debt_equals_sum_of_all_dai()
     debt() == daiSumGhost()
     filtered { f -> !f.isFallback }
 
-rule sum_of_art_per_ilk_equals_Art_of_ilk(bytes32 ilk, method f) {
+//invariant fundamental_equation_of_dai()
+//    debt() == vice() + sumOfVaultDebtGhost()
+//    filtered { f -> !f.isFallback }
+
+rule fundamental_equation_of_dai(method f) filtered { f -> !f.isFallback } {
+//    require(forall bytes32 ilk. Art(ilk) == artSumPerIlkGhost[ilk]);
+    require(debt() == vice() + sumOfVaultDebtGhost());  // goal
+
+    env e;
+    calldataarg arg;
+    f(e, arg);
+
+    assert(debt() == vice() + sumOfVaultDebtGhost(), "fundamental equation of dai violated");
+}
+
+rule sum_of_art_per_ilk_equals_Art_of_ilk(bytes32 ilk, method f) filtered { f -> !f.isFallback } {
     uint256 ArtBefore; uint256 rateBefore; uint256 spotBefore; uint256 lineBefore; uint256 dustBefore;
     ArtBefore, rateBefore, spotBefore, lineBefore, dustBefore = ilks(ilk);
-    require(ArtBefore == artSumPerIlkGhost(ilk));
+    require(ArtBefore == artSumPerIlkGhost[ilk]);  // goal #1
+    require(ArtBefore == Art(ilk));                // goal #2
 
     env e;
     calldataarg arg;
@@ -70,7 +103,11 @@ rule sum_of_art_per_ilk_equals_Art_of_ilk(bytes32 ilk, method f) {
 
     uint256 ArtAfter; uint256 rateAfter; uint256 spotAfter; uint256 lineAfter; uint256 dustAfter;
     ArtAfter, rateAfter, spotAfter, lineAfter, dustAfter = ilks(ilk);
-    assert(ArtAfter == artSumPerIlkGhost(ilk), "art sum inconsistency with accumulator per ilk");
+    assert(ArtAfter == artSumPerIlkGhost[ilk], "art sum inconsistency with accumulator per ilk");
+
+    // Justifies require(forall bytes32 ilk. Art(ilk) == artSumPerIlkGhost[ilk]); in fundamental_equation_of_dai, which in turn
+    // constrains the underlying storage slot.
+    assert(ArtAfter == Art(ilk), "Art getter not returning value correctly");
 }
 
 // Verify fallback always reverts
