@@ -91,6 +91,18 @@ rule fundamental_equation_of_dai(method f) filtered { f -> !f.isFallback } {
     assert(debt() == vice() + sumOfVaultDebtGhost(), "fundamental equation of dai violated");
 }
 
+rule fundamental_equation_of_dai_init(bytes32 ilk) {
+//    require(forall bytes32 ilk. Art(ilk) == artSumPerIlkGhost[ilk]);
+    require(debt() == vice() + sumOfVaultDebtGhost());  // goal
+    require(artSumPerIlkGhost[ilk] == Art(ilk));  // storage-ghost consistency; justified by sum_of_art_per_ilk_equals_Art_of_ilk
+    uint256 artSum = artSumPerIlkGhost[ilk];  // this is so the value is visible in the output
+
+    env e;
+    init(e, ilk);
+
+    assert(debt() == vice() + sumOfVaultDebtGhost(), "fundamental equation of dai violated");
+}
+
 rule sum_of_art_per_ilk_equals_Art_of_ilk(bytes32 ilk, method f) filtered { f -> !f.isFallback } {
     uint256 ArtBefore; uint256 rateBefore; uint256 spotBefore; uint256 lineBefore; uint256 dustBefore;
     ArtBefore, rateBefore, spotBefore, lineBefore, dustBefore = ilks(ilk);
