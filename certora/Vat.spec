@@ -200,7 +200,7 @@ rule file_ilk(bytes32 ilk, bytes32 what, uint256 data) {
     assert(what == 0x73706f7400000000000000000000000000000000000000000000000000000000 => spotAfter == data, "file did not set spot as expected");
     assert(what != 0x73706f7400000000000000000000000000000000000000000000000000000000 => spotAfter == spotBefore, "file did not keep spot as expected");
     assert(what == 0x6c696e6500000000000000000000000000000000000000000000000000000000 => lineAfter == data, "file did not set line as expected");
-    assert(what != 0x6c696e6500000000000000000000000000000000000000000000000000000000 => lineAfter == lineBefore, "file did not keep spot as expected");
+    assert(what != 0x6c696e6500000000000000000000000000000000000000000000000000000000 => lineAfter == lineBefore, "file did not keep line as expected");
     assert(what == 0x6475737400000000000000000000000000000000000000000000000000000000 => dustAfter == data, "file did not set dust as expected");
     assert(what != 0x6475737400000000000000000000000000000000000000000000000000000000 => dustAfter == dustBefore, "file did not keep dust as expected");
     assert(ArtAfter == ArtBefore, "file did not keep Art as expected");
@@ -765,7 +765,7 @@ rule grab(bytes32 i, address u, address v, address w, int256 dink, int256 dart) 
     assert(to_mathint(sinAfter) == to_mathint(sinBefore) - to_mathint(rateBefore) * to_mathint(dart), "grab did not set w sin as expected");
     assert(to_mathint(viceAfter) == to_mathint(viceBefore) - to_mathint(rateBefore) * to_mathint(dart), "grab did not set vice as expected");
     assert(inkOtherAfter == inkOtherBefore, "grab did not keep other ink as expected");
-    assert(artOtherAfter == artOtherBefore, "grab did not keep other ink as expected");
+    assert(artOtherAfter == artOtherBefore, "grab did not keep other art as expected");
     assert(rateAfter == rateBefore, "grab did not keep rate as expected");
     assert(spotAfter == spotBefore, "grab did not keep spot as expected");
     assert(lineAfter == lineBefore, "grab did not keep line as expected");
