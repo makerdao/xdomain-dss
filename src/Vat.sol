@@ -217,23 +217,23 @@ contract Vat {
         // system is live
         require(live == 1, "Vat/not-live");
 
-        Urn memory urn = urns[i][u];
-        Ilk memory ilk = ilks[i];
+        uint256 rate_ = ilks[i].rate;
         // ilk has been initialised
-        require(ilk.rate != 0, "Vat/ilk-not-init");
+        require(rate_ != 0, "Vat/ilk-not-init");
 
+        Urn memory urn = urns[i][u];
         urn.ink = _add(urn.ink, dink);
         urn.art = _add(urn.art, dart);
-        ilk.Art = _add(ilk.Art, dart);
 
-        int256 dtab = _int256(ilk.rate) * dart;
-        uint256 tab = ilk.rate * urn.art;
-        debt     = _add(debt, dtab);
-
+        uint256 Art_  = _add(ilks[i].Art, dart);
+        int256  dtab  = _int256(rate_) * dart;
+        uint256 debt_ = _add(debt, dtab);
         // either debt has decreased, or debt ceilings are not exceeded
-        require(either(dart <= 0, both(ilk.Art * ilk.rate <= ilk.line, debt <= Line)), "Vat/ceiling-exceeded");
+        require(either(dart <= 0, both(Art_ * rate_ <= ilks[i].line, debt_ <= Line)), "Vat/ceiling-exceeded");
+
+        uint256 tab = rate_ * urn.art;
         // urn is either less risky than before, or it is safe
-        require(either(both(dart <= 0, dink >= 0), tab <= urn.ink * ilk.spot), "Vat/not-safe");
+        require(either(both(dart <= 0, dink >= 0), tab <= urn.ink * ilks[i].spot), "Vat/not-safe");
 
         // urn is either more safe, or the owner consents
         require(either(both(dart <= 0, dink >= 0), wish(u, msg.sender)), "Vat/not-allowed-u");
@@ -243,41 +243,48 @@ contract Vat {
         require(either(dart >= 0, wish(w, msg.sender)), "Vat/not-allowed-w");
 
         // urn has no debt, or a non-dusty amount
-        require(either(urn.art == 0, tab >= ilk.dust), "Vat/dust");
+        require(either(urn.art == 0, tab >= ilks[i].dust), "Vat/dust");
 
         gem[i][v] = _sub(gem[i][v], dink);
         dai[w]    = _add(dai[w],    dtab);
 
-        urns[i][u] = urn;
-        ilks[i]    = ilk;
+        debt = debt_;
+
+        urns[i][u]  = urn;
+        ilks[i].Art = Art_;
 
         emit Frob(i, u, v, w, dink, dart);
     }
 
     // --- CDP Fungibility ---
     function fork(bytes32 ilk, address src, address dst, int256 dink, int256 dart) external {
-        Urn storage u = urns[ilk][src];
-        Urn storage v = urns[ilk][dst];
-        Ilk storage i = ilks[ilk];
+        Urn memory u = urns[ilk][src];
+        Urn memory v = urns[ilk][dst];
+        uint256 rate_ = ilks[ilk].rate;
+        uint256 spot_ = ilks[ilk].spot;
+        uint256 dust_ = ilks[ilk].dust;
 
         u.ink = _sub(u.ink, dink);
         u.art = _sub(u.art, dart);
         v.ink = _add(v.ink, dink);
         v.art = _add(v.art, dart);
 
-        uint256 utab = u.art * i.rate;
-        uint256 vtab = v.art * i.rate;
+        uint256 utab = u.art * rate_;
+        uint256 vtab = v.art * rate_;
 
         // both sides consent
         require(both(wish(src, msg.sender), wish(dst, msg.sender)), "Vat/not-allowed");
 
         // both sides safe
-        require(utab <= u.ink * i.spot, "Vat/not-safe-src");
-        require(vtab <= v.ink * i.spot, "Vat/not-safe-dst");
+        require(utab <= u.ink * spot_, "Vat/not-safe-src");
+        require(vtab <= v.ink * spot_, "Vat/not-safe-dst");
 
         // both sides non-dusty
-        require(either(utab >= i.dust, u.art == 0), "Vat/dust-src");
-        require(either(vtab >= i.dust, v.art == 0), "Vat/dust-dst");
+        require(either(utab >= dust_, u.art == 0), "Vat/dust-src");
+        require(either(vtab >= dust_, v.art == 0), "Vat/dust-dst");
+
+        urns[ilk][src] = u;
+        urns[ilk][src] = v;
 
         emit Fork(ilk, src, dst, dink, dart);
     }
@@ -285,13 +292,12 @@ contract Vat {
     // --- CDP Confiscation ---
     function grab(bytes32 i, address u, address v, address w, int256 dink, int256 dart) external auth {
         Urn storage urn = urns[i][u];
-        Ilk storage ilk = ilks[i];
-
         urn.ink = _add(urn.ink, dink);
         urn.art = _add(urn.art, dart);
-        ilk.Art = _add(ilk.Art, dart);
 
-        int256 dtab = _int256(ilk.rate) * dart;
+        ilks[i].Art = _add(ilks[i].Art, dart);
+
+        int256 dtab = _int256(ilks[i].rate) * dart;
 
         gem[i][v] = _sub(gem[i][v], dink);
         sin[w]    = _sub(sin[w],    dtab);
@@ -323,11 +329,10 @@ contract Vat {
     // --- Rates ---
     function fold(bytes32 i, address u, int256 rate_) external auth {
         require(live == 1, "Vat/not-live");
-        Ilk storage ilk = ilks[i];
-        ilk.rate    = _add(ilk.rate, rate_);
-        int256 rad  = _int256(ilk.Art) * rate_;
-        dai[u]      = _add(dai[u], rad);
-        debt        = _add(debt,   rad);
+        ilks[i].rate = _add(ilks[i].rate, rate_);
+        int256 rad   = _int256(ilks[i].Art) * rate_;
+        dai[u]       = _add(dai[u], rad);
+        debt         = _add(debt,   rad);
 
         emit Fold(i, u, rate_);
     }
