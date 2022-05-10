@@ -3,15 +3,16 @@
 pragma solidity ^0.8.13;
 
 import "ds-test/test.sol";
-import "ds-token/token.sol";
 import "ds-value/value.sol";
 
-import {Vat}  from '../Vat.sol';
-import {Pot}  from '../Pot.sol';
+import {MockToken} from './mocks/Token.sol';
+
+import {Vat}     from '../Vat.sol';
+import {Pot}     from '../Pot.sol';
 import {GemJoin} from '../GemJoin.sol';
-import {End}  from '../End.sol';
+import {End}     from '../End.sol';
 import {Spotter} from '../Spotter.sol';
-import {Cure} from '../Cure.sol';
+import {Cure}    from '../Cure.sol';
 
 interface Hevm {
     function warp(uint256) external;
@@ -20,12 +21,12 @@ interface Hevm {
 contract Usr {
     Vat     public vat;
     End     public end;
-    DSToken public claimToken;
+    MockToken public claimToken;
 
     constructor(Vat vat_, End end_) {
         vat  = vat_;
         end  = end_;
-        claimToken = DSToken(address(end.claim()));
+        claimToken = MockToken(address(end.claim()));
     }
     function frob(bytes32 ilk, address u, address v, address w, int dink, int dart) public {
         vat.frob(ilk, u, v, w, dink, dart);
@@ -88,7 +89,7 @@ contract EndTest is DSTest {
 
     struct Ilk {
         DSValue pip;
-        DSToken gem;
+        MockToken gem;
         GemJoin gemA;
     }
 
@@ -141,7 +142,7 @@ contract EndTest is DSTest {
     }
 
     function init_collateral(bytes32 name) internal returns (Ilk memory) {
-        DSToken coin = new DSToken("");
+        MockToken coin = new MockToken("");
         coin.mint(500_000 ether);
 
         DSValue pip = new DSValue();
@@ -173,7 +174,7 @@ contract EndTest is DSTest {
         hevm.warp(604411200);
 
         vat = new Vat();
-        claimToken = new DSToken('CLAIM');
+        claimToken = new MockToken('CLAIM');
 
         vow = new MockVow(vat);
 
