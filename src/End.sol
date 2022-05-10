@@ -58,7 +58,8 @@ interface PotLike {
 }
 
 interface VowLike {
-    function cage() external;
+    function grain() external view returns (uint256);
+    function tell(uint256 value) external;
 }
 
 interface ClipLike {
@@ -84,6 +85,15 @@ interface SpotLike {
         uint256 mat    // [ray]
     );
     function cage() external;
+}
+
+interface CureLike {
+    function tell() external view returns (uint256);
+    function cage() external;
+}
+
+interface ClaimLike {
+    function transferFrom(address src, address dst, uint256 amount) external returns (bool);
 }
 
 /*
@@ -117,40 +127,21 @@ interface SpotLike {
        - any excess collateral remains
        - backing collateral taken
 
-    We determine (b) by processing ongoing dai generating processes,
-    i.e. auctions. We need to ensure that auctions will not generate any
-    further dai income.
-
-    In the case of the Dutch Auctions model (Clipper) they keep recovering
-    debt during the whole lifetime and there isn't a max duration time
-    guaranteed for the auction to end.
-    So the way to ensure the protocol will not receive extra dai income is:
-
-    4. i) `snip`: cancel all ongoing auctions and seize the collateral.
-
-           `snip(ilk, id)`:
-            - cancel individual running clip auctions
-            - retrieves remaining collateral and debt (including penalty)
-              to owner's CDP
-
-    When a CDP has been processed and has no debt remaining, the
-    remaining collateral can be removed.
-
-    5. `free(ilk)`:
+    4. `free(ilk)`:
         - remove collateral from the caller's CDP
         - owner can call as needed
 
     After the processing period has elapsed, we enable calculation of
     the final price for each collateral type.
 
-    6. `thaw()`:
+    5. `thaw()`:
        - only callable after processing time period elapsed
        - assumption that all under-collateralised CDPs are processed
        - fixes the total outstanding supply of dai
        - may also require extra CDP processing to cover vow surplus
        - sends final debt amount to the DomainGuest
 
-    7. `flow(ilk)`:
+    6. `flow(ilk)`:
         - calculate the `fix`, the cash price for a given ilk
         - adjusts the `fix` in the case of deficit / surplus
 
@@ -162,13 +153,13 @@ interface SpotLike {
     claims cannot be unpacked and is not transferrable. More claims can be
     added to a bag later.
 
-    8. `pack(wad)`:
+    7. `pack(wad)`:
         - put some claim tokens into a bag in preparation for `cash`
 
     Finally, collateral can be obtained with `cash`. The bigger the bag,
     the more collateral can be released.
 
-    9. `cash(ilk, wad)`:
+    8. `cash(ilk, wad)`:
         - exchange some dai from your bag for gems from a specific ilk
         - the number of gems is limited by how big your bag is
 */
@@ -177,11 +168,12 @@ contract End {
     // --- Data ---
     mapping (address => uint256) public wards;
     
-    VatLike  public vat;   // CDP Engine
-    DogLike  public dog;
-    VowLike  public vow;   // Debt Engine
-    PotLike  public pot;
-    SpotLike public spot;
+    VatLike   public vat;   // CDP Engine
+    VowLike   public vow;   // Debt Engine
+    PotLike   public pot;
+    SpotLike  public spot;
+    CureLike  public cure;
+    ClaimLike public claim;
 
     uint256  public live;  // Active Flag
     uint256  public when;  // Time of cage                   [unix epoch time]
@@ -203,8 +195,6 @@ contract End {
     event File(bytes32 indexed what, address data);
     event Cage();
     event Cage(bytes32 indexed ilk);
-    event Snip(bytes32 indexed ilk, uint256 indexed id, address indexed usr, uint256 tab, uint256 lot, uint256 art);
-    event Skip(bytes32 indexed ilk, uint256 indexed id, address indexed usr, uint256 tab, uint256 lot, uint256 art);
     event Skim(bytes32 indexed ilk, address indexed urn, uint256 wad, uint256 art);
     event Free(bytes32 indexed ilk, address indexed usr, uint256 ink);
     event Thaw();
@@ -252,10 +242,11 @@ contract End {
     function file(bytes32 what, address data) external auth {
         require(live == 1, "End/not-live");
         if (what == "vat")  vat = VatLike(data);
-        else if (what == "dog")   dog = DogLike(data);
         else if (what == "vow")   vow = VowLike(data);
         else if (what == "pot")   pot = PotLike(data);
         else if (what == "spot") spot = SpotLike(data);
+        else if (what == "cure") cure = CureLike(data);
+        else if (what == "claim") claim = ClaimLike(data);
         else revert("End/file-unrecognized-param");
         emit File(what, data);
     }
@@ -272,9 +263,9 @@ contract End {
         live = 0;
         when = block.timestamp;
         vat.cage();
-        dog.cage();
         spot.cage();
         pot.cage();
+        cure.cage();
         emit Cage();
     }
 
@@ -286,24 +277,6 @@ contract End {
         // par is a ray, pip returns a wad
         tag[ilk] = wdiv(spot.par(), uint256(pip.read()));
         emit Cage(ilk);
-    }
-
-    function snip(bytes32 ilk, uint256 id) external {
-        require(tag[ilk] != 0, "End/tag-ilk-not-defined");
-
-        (address _clip,,,) = dog.ilks(ilk);
-        ClipLike clip = ClipLike(_clip);
-        (, uint256 rate,,,) = vat.ilks(ilk);
-        (, uint256 tab, uint256 lot, address usr,,) = clip.sales(id);
-
-        vat.suck(address(vow), address(vow),  tab);
-        clip.yank(id);
-
-        uint256 art = tab / rate;
-        Art[ilk] = Art[ilk] + art;
-        require(int256(lot) >= 0 && int256(art) >= 0, "End/overflow");
-        vat.grab(ilk, usr, address(this), address(vow), int256(lot), int256(art));
-        emit Snip(ilk, id, usr, tab, lot, art);
     }
 
     function skim(bytes32 ilk, address urn) external {
@@ -334,7 +307,9 @@ contract End {
         require(debt == 0, "End/debt-not-zero");
         require(vat.dai(address(vow)) == 0, "End/surplus-not-zero");
         require(block.timestamp >= when + wait, "End/wait-not-finished");
-        debt = vat.debt();
+        debt = vat.debt() - cure.tell();
+        uint256 grain = vow.grain() * RAY;
+        if (debt < grain) vow.tell(grain - debt);
         emit Thaw();
     }
     function flow(bytes32 ilk) external {
@@ -349,7 +324,7 @@ contract End {
 
     function pack(uint256 wad) external {
         require(debt != 0, "End/debt-zero");
-        vat.move(msg.sender, address(vow), wad * RAY);
+        require(claim.transferFrom(msg.sender, address(vow), wad), "End/transfer-failed");
         bag[msg.sender] = bag[msg.sender] + wad;
         emit Pack(msg.sender, wad);
     }
