@@ -74,6 +74,10 @@ contract MockVow {
         told = value;
     }
 
+    function heal(uint256 amount) external {
+        vat.heal(amount);
+    }
+
 }
 
 contract EndTest is DSTest {
@@ -81,11 +85,11 @@ contract EndTest is DSTest {
 
     Vat         vat;
     End         end;
-    Vow         vow;
+    MockVow     vow;
     Pot         pot;
     Spotter     spot;
     Cure        cure;
-    ClaimToken  claimToken;
+    MockToken   claimToken;
 
     struct Ilk {
         DSValue pip;
@@ -262,7 +266,7 @@ contract EndTest is DSTest {
         assertEq(gem("gold", urn1), 7 ether);
         ali.exit(gold.gemA, address(this), 7 ether);
 
-        hevm.warp(now + 1 hours);
+        hevm.warp(block.timestamp + 1 hours);
         end.thaw();
         end.flow("gold");
         assertTrue(end.fix("gold") != 0);
@@ -271,16 +275,17 @@ contract EndTest is DSTest {
         claimToken.mint(address(ali), 15 ether);
         ali.approveClaim(address(end), 15 ether);
         ali.pack(15 ether);
-        vow.heal(rad(15 ether));
 
         // global checks:
-        assertEq(vat.debt(), 0);
-        assertEq(vat.vice(), 0);
+        assertEq(vat.debt(), rad(15 ether));
+        assertEq(vat.vice(), rad(15 ether));
+        assertEq(vat.sin(address(vow)), rad(15 ether));
+        assertEq(claimToken.balanceOf(address(vow)), 15 ether);
 
         ali.cash("gold", 15 ether);
 
         // local checks:
-        assertEq(dai(urn1), 0);
+        assertEq(dai(urn1), 15 ether);
         assertEq(gem("gold", urn1), 3 ether);
         ali.exit(gold.gemA, address(this), 3 ether);
 
@@ -336,7 +341,7 @@ contract EndTest is DSTest {
         assertEq(gem("gold", urn1), 2.5 ether);
         ali.exit(gold.gemA, address(this), 2.5 ether);
 
-        hevm.warp(now + 1 hours);
+        hevm.warp(block.timestamp + 1 hours);
         end.thaw();
         end.flow("gold");
         assertTrue(end.fix("gold") != 0);
@@ -345,16 +350,17 @@ contract EndTest is DSTest {
         claimToken.mint(address(ali), 15 ether);
         ali.approveClaim(address(end), 15 ether);
         ali.pack(15 ether);
-        vow.heal(rad(15 ether));
 
         // global checks:
-        assertEq(vat.debt(), rad(3 ether));
-        assertEq(vat.vice(), rad(3 ether));
+        assertEq(vat.debt(), rad(18 ether));
+        assertEq(vat.vice(), rad(18 ether));
+        assertEq(vat.sin(address(vow)), rad(18 ether));
+        assertEq(claimToken.balanceOf(address(vow)), 15 ether);
 
         ali.cash("gold", 15 ether);
 
         // local checks:
-        assertEq(dai(urn1), 0);
+        assertEq(dai(urn1), 15 ether);
         uint256 fix = end.fix("gold");
         assertEq(gem("gold", urn1), rmul(fix, 15 ether));
         ali.exit(gold.gemA, address(this), rmul(fix, 15 ether));
@@ -363,16 +369,17 @@ contract EndTest is DSTest {
         claimToken.mint(address(bob), 3 ether);
         bob.approveClaim(address(end), 3 ether);
         bob.pack(3 ether);
-        vow.heal(rad(3 ether));
 
         // global checks:
-        assertEq(vat.debt(), 0);
-        assertEq(vat.vice(), 0);
+        assertEq(vat.debt(), rad(18 ether));
+        assertEq(vat.vice(), rad(18 ether));
+        assertEq(vat.sin(address(vow)), rad(18 ether));
+        assertEq(claimToken.balanceOf(address(vow)), 18 ether);
 
         bob.cash("gold", 3 ether);
 
         // local checks:
-        assertEq(dai(urn2), 0);
+        assertEq(dai(urn2), 3 ether);
         assertEq(gem("gold", urn2), rmul(fix, 3 ether));
         bob.exit(gold.gemA, address(this), rmul(fix, 3 ether));
 
@@ -421,7 +428,7 @@ contract EndTest is DSTest {
         assertEq(gem("gold", urn1), 7 ether);
         ali.exit(gold.gemA, address(this), 7 ether);
 
-        hevm.warp(now + 1 hours);
+        hevm.warp(block.timestamp + 1 hours);
         end.thaw();
         end.flow("gold");
         assertTrue(end.fix("gold") != 0);
@@ -430,16 +437,18 @@ contract EndTest is DSTest {
         claimToken.mint(address(ali), 16 ether);
         ali.approveClaim(address(end), 16 ether);
         ali.pack(16 ether);
-        vow.heal(rad(16 ether));
 
         // global checks:
-        assertEq(vat.debt(), 0);
-        assertEq(vat.vice(), 0);
+        assertEq(vat.debt(), rad(16 ether));
+        assertEq(vat.vice(), rad(16 ether));
+        assertEq(vat.sin(address(vow)), rad(16 ether));
+        assertEq(claimToken.balanceOf(address(vow)), 16 ether);
+
 
         ali.cash("gold", 16 ether);
 
         // local checks:
-        assertEq(dai(urn1), 0);
+        assertEq(dai(urn1), 16 ether);
         assertEq(gem("gold", urn1), 3 ether);
         ali.exit(gold.gemA, address(this), 3 ether);
 
@@ -498,7 +507,7 @@ contract EndTest is DSTest {
         assertEq(gem("gold", urn1), 2.5 ether);
         ali.exit(gold.gemA, address(this), 2.5 ether);
 
-        hevm.warp(now + 1 hours);
+        hevm.warp(block.timestamp + 1 hours);
         // balance the vow
         vow.heal(rad(1 ether));
         end.thaw();
@@ -509,16 +518,15 @@ contract EndTest is DSTest {
         claimToken.mint(address(ali), 14 ether);
         ali.approveClaim(address(end), 14 ether);
         ali.pack(14 ether);
-        vow.heal(rad(14 ether));
 
         // global checks:
-        assertEq(vat.debt(), rad(3 ether));
-        assertEq(vat.vice(), rad(3 ether));
+        assertEq(vat.debt(), rad(17 ether));
+        assertEq(vat.vice(), rad(17 ether));
 
         ali.cash("gold", 14 ether);
 
         // local checks:
-        assertEq(dai(urn1), 0);
+        assertEq(dai(urn1), 14 ether);
         uint256 fix = end.fix("gold");
         assertEq(gem("gold", urn1), rmul(fix, 14 ether));
         ali.exit(gold.gemA, address(this), rmul(fix, 14 ether));
@@ -527,16 +535,15 @@ contract EndTest is DSTest {
         claimToken.mint(address(bob), 16 ether);
         bob.approveClaim(address(end), 16 ether);
         bob.pack(3 ether);
-        vow.heal(rad(3 ether));
 
         // global checks:
-        assertEq(vat.debt(), 0);
-        assertEq(vat.vice(), 0);
+        assertEq(vat.debt(), rad(17 ether));
+        assertEq(vat.vice(), rad(17 ether));
 
         bob.cash("gold", 3 ether);
 
         // local checks:
-        assertEq(dai(urn2), 0);
+        assertEq(dai(urn2), 3 ether);
         assertEq(gem("gold", urn2), rmul(fix, 3 ether));
         bob.exit(gold.gemA, address(this), rmul(fix, 3 ether));
 
@@ -578,14 +585,14 @@ contract EndTest is DSTest {
         end.skim("gold", urn1);  // over-collateralised
         end.skim("coal", urn2);  // under-collateralised
 
-        hevm.warp(now + 1 hours);
+        hevm.warp(block.timestamp + 1 hours);
         end.thaw();
         end.flow("gold");
         end.flow("coal");
 
-        claimToken.mint(address(ali), type(uint256).max);
+        claimToken.mint(address(ali), 1000 ether);
         ali.approveClaim(address(end), type(uint256).max);
-        claimToken.mint(address(bob), type(uint256).max);
+        claimToken.mint(address(bob), 1000 ether);
         bob.approveClaim(address(end), type(uint256).max);
 
         assertEq(vat.debt(),             rad(20 ether));
@@ -675,7 +682,7 @@ contract EndTest is DSTest {
         assertEq(gem("gold", urn1), 300_000 ether);
         ali.exit(gold.gemA, address(this), 300_000 ether);
 
-        hevm.warp(now + 1 hours);
+        hevm.warp(block.timestamp + 1 hours);
         end.thaw();
         end.flow("gold");
     }
