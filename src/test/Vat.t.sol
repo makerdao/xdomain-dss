@@ -464,3 +464,29 @@ contract ForkTest is DSTest {
         assertTrue(!ali.can_fork("gems", a, b, 1 ether, 0.5 ether));
     }
 }
+
+contract SwellTest is DSTest {
+    Vat vat;
+    Usr ali;
+    address a;
+
+    function rad(uint wad) internal pure returns (uint) {
+        return wad * 10 ** 27;
+    }
+
+    function setUp() public {
+        vat = new Vat();
+        ali = new Usr(vat);
+        a = address(ali);
+    }
+    function test_swell() public {
+        assertEq(vat.dai(a), 0);
+        assertEq(vat.surf(), 0);
+        vat.swell(a, int256(rad(100 ether)));
+        assertEq(vat.dai(a), rad(100 ether));
+        assertEq(vat.surf(), rad(100 ether));
+        vat.swell(a, -int256(rad(50 ether)));
+        assertEq(vat.dai(a), rad(50 ether));
+        assertEq(vat.surf(), rad(50 ether));
+    }
+}
