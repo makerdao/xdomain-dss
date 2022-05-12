@@ -44,7 +44,7 @@ contract Vat {
     mapping (address => uint256)                   public sin;  // [rad]
 
     uint256 public debt;  // Total Dai Issued    [rad]
-    uint256 public surf;  // Total Dai Bridged   [rad]
+    int256  public surf;  // Total Dai Bridged   [rad]
     uint256 public vice;  // Total Unbacked Dai  [rad]
     uint256 public Line;  // Total Debt Ceiling  [rad]
     uint256 public live;  // Active Flag
@@ -316,7 +316,7 @@ contract Vat {
     // --- Bridged DAI ---
     function swell(address u, int256 rad) external auth {
         dai[u] = _add(dai[u], rad);
-        surf   = _add(surf, rad);
+        surf   = surf + rad;
     }
 
     // --- Rates ---

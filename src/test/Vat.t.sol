@@ -484,9 +484,15 @@ contract SwellTest is DSTest {
         assertEq(vat.surf(), 0);
         vat.swell(a, int256(rad(100 ether)));
         assertEq(vat.dai(a), rad(100 ether));
-        assertEq(vat.surf(), rad(100 ether));
+        assertEq(vat.surf(), int256(rad(100 ether)));
         vat.swell(a, -int256(rad(50 ether)));
         assertEq(vat.dai(a), rad(50 ether));
-        assertEq(vat.surf(), rad(50 ether));
+        assertEq(vat.surf(), int256(rad(50 ether)));
+        vat.suck(address(123), address(a), rad(100 ether));
+        assertEq(vat.dai(a), rad(150 ether));
+        assertEq(vat.surf(), int256(rad(50 ether)));
+        vat.swell(a, -int256(rad(75 ether)));   // Swell can be negative
+        assertEq(vat.dai(a), rad(75 ether));
+        assertEq(vat.surf(), -int256(rad(25 ether)));
     }
 }
