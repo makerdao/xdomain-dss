@@ -412,8 +412,6 @@ contract ForkTest is DSTest {
     Vat vat;
     Usr ali;
     Usr bob;
-    address a;
-    address b;
 
     function ray(uint wad) internal pure returns (uint) {
         return wad * 10 ** 9;
@@ -426,41 +424,61 @@ contract ForkTest is DSTest {
         vat = new Vat();
         ali = new Usr(vat);
         bob = new Usr(vat);
-        a = address(ali);
-        b = address(bob);
 
         vat.init("gems");
         vat.file("gems", "spot", ray(0.5  ether));
         vat.file("gems", "line", rad(1000 ether));
         vat.file("Line",         rad(1000 ether));
 
-        vat.slip("gems", a, 8 ether);
+        vat.slip("gems", address(ali), 8 ether);
+
+        ali.frob("gems", address(ali), address(ali), address(ali), 8 ether, 4 ether);
+        assertEq(vat.ink("gems", address(ali)), 8 ether);
+        assertEq(vat.art("gems", address(ali)), 4 ether);
+        assertEq(vat.ink("gems", address(bob)), 0);
+        assertEq(vat.art("gems", address(bob)), 0);
     }
     function test_fork_to_self() public {
-        ali.frob("gems", a, a, a, 8 ether, 4 ether);
-        assertTrue( ali.can_fork("gems", a, a, 8 ether, 4 ether));
-        assertTrue( ali.can_fork("gems", a, a, 4 ether, 2 ether));
-        assertTrue(!ali.can_fork("gems", a, a, 9 ether, 4 ether));
+        assertTrue( ali.can_fork("gems", address(ali), address(ali), 8 ether, 4 ether));
+        assertTrue( ali.can_fork("gems", address(ali), address(ali), 4 ether, 2 ether));
+        assertTrue(!ali.can_fork("gems", address(ali), address(ali), 9 ether, 4 ether));
+
+        ali.fork("gems", address(ali), address(ali), 8 ether, 4 ether);
+        assertEq(vat.ink("gems", address(ali)), 8 ether);
+        assertEq(vat.art("gems", address(ali)), 4 ether);
+
+        ali.fork("gems", address(ali), address(ali), 4 ether, 2 ether);
+        assertEq(vat.ink("gems", address(ali)), 8 ether);
+        assertEq(vat.art("gems", address(ali)), 4 ether);
     }
     function test_give_to_other() public {
-        ali.frob("gems", a, a, a, 8 ether, 4 ether);
-        assertTrue(!ali.can_fork("gems", a, b, 8 ether, 4 ether));
+        assertTrue(!ali.can_fork("gems", address(ali), address(bob), 8 ether, 4 ether));
         bob.hope(address(ali));
-        assertTrue( ali.can_fork("gems", a, b, 8 ether, 4 ether));
+        assertTrue( ali.can_fork("gems", address(ali), address(bob), 8 ether, 4 ether));
     }
     function test_fork_to_other() public {
-        ali.frob("gems", a, a, a, 8 ether, 4 ether);
+        assertTrue(!ali.can_fork("gems", address(ali), address(bob), 4 ether, 2 ether)); // bob didn't give allowance yet
         bob.hope(address(ali));
-        assertTrue( ali.can_fork("gems", a, b, 4 ether, 2 ether));
-        assertTrue(!ali.can_fork("gems", a, b, 4 ether, 3 ether));
-        assertTrue(!ali.can_fork("gems", a, b, 4 ether, 1 ether));
+        assertTrue( ali.can_fork("gems", address(ali), address(bob), 4 ether, 2 ether));
+        assertTrue(!ali.can_fork("gems", address(ali), address(bob), 4 ether, 3 ether)); // bob would be unsafe
+        assertTrue(!ali.can_fork("gems", address(ali), address(bob), 4 ether, 1 ether)); // ali would become unsafe
+
+        ali.fork("gems", address(ali), address(bob), 6 ether, 3 ether);
+        assertEq(vat.ink("gems", address(ali)), 2 ether);
+        assertEq(vat.art("gems", address(ali)), 1 ether);
+        assertEq(vat.ink("gems", address(bob)), 6 ether);
+        assertEq(vat.art("gems", address(bob)), 3 ether);
     }
     function test_fork_dust() public {
-        ali.frob("gems", a, a, a, 8 ether, 4 ether);
         bob.hope(address(ali));
-        assertTrue( ali.can_fork("gems", a, b, 4 ether, 2 ether));
         vat.file("gems", "dust", rad(1 ether));
-        assertTrue( ali.can_fork("gems", a, b, 2 ether, 1 ether));
-        assertTrue(!ali.can_fork("gems", a, b, 1 ether, 0.5 ether));
+        assertTrue( ali.can_fork("gems", address(ali), address(bob), 2 ether, 1 ether));
+        assertTrue(!ali.can_fork("gems", address(ali), address(bob), 1 ether, 0.5 ether)); // bob would become under dust
+
+        ali.fork("gems", address(ali), address(bob), 2 ether, 1 ether);
+        assertEq(vat.ink("gems", address(ali)), 6 ether);
+        assertEq(vat.art("gems", address(ali)), 3 ether);
+        assertEq(vat.ink("gems", address(bob)), 2 ether);
+        assertEq(vat.art("gems", address(bob)), 1 ether);
     }
 }

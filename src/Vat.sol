@@ -266,8 +266,13 @@ contract Vat {
 
         u.ink = _sub(u.ink, dink);
         u.art = _sub(u.art, dart);
-        v.ink = _add(v.ink, dink);
-        v.art = _add(v.art, dart);
+        if (src == dst) {
+            u.ink = _add(u.ink, dink);
+            u.art = _add(u.art, dart);
+        } else {
+            v.ink = _add(v.ink, dink);
+            v.art = _add(v.art, dart);
+        }
 
         uint256 utab = u.art * rate_;
         uint256 vtab = v.art * rate_;
@@ -283,8 +288,10 @@ contract Vat {
         require(either(utab >= dust_, u.art == 0), "Vat/dust-src");
         require(either(vtab >= dust_, v.art == 0), "Vat/dust-dst");
 
-        urns[ilk][src] = u;
-        urns[ilk][src] = v;
+        if (src != dst) {
+            urns[ilk][src] = u;
+            urns[ilk][dst] = v;
+        }
 
         emit Fork(ilk, src, dst, dink, dart);
     }
