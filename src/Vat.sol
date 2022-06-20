@@ -37,11 +37,11 @@ contract Vat {
         uint256 art;   // Normalised Debt    [wad]
     }
 
-    mapping (bytes32 => Ilk)                       public ilks;
-    mapping (bytes32 => mapping (address => Urn )) public urns;
-    mapping (bytes32 => mapping (address => uint)) public gem;  // [wad]
-    mapping (address => uint256)                   public dai;  // [rad]
-    mapping (address => uint256)                   public sin;  // [rad]
+    mapping (bytes32 => Ilk)                            public ilks;
+    mapping (bytes32 => mapping (address => Urn))       public urns;
+    mapping (bytes32 => mapping (address => uint256))   public gem;  // [wad]
+    mapping (address => uint256)                        public dai;  // [rad]
+    mapping (address => uint256)                        public sin;  // [rad]
 
     uint256 public debt;  // Total Dai Issued    [rad]
     uint256 public vice;  // Total Unbacked Dai  [rad]
