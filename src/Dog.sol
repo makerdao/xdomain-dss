@@ -186,14 +186,21 @@ contract Dog {
             // 1) Remaining space in the general Hole
             // 2) Remaining space in the collateral hole
             require(Hole > Dirt && milk.hole > milk.dirt, "Dog/liquidation-limit-hit");
-            uint256 room = min(Hole - Dirt, milk.hole - milk.dirt);
+            uint256 room;
+            unchecked {
+                room = min(Hole - Dirt, milk.hole - milk.dirt);
+            }
 
             // uint256.max()/(RAD*WAD) = 115,792,089,237,316
             dart = min(art, room * WAD / rate / milk.chop);
 
             // Partial liquidation edge case logic
             if (art > dart) {
-                if ((art - dart) * rate < dust) {
+                uint256 delta;
+                unchecked {
+                    delta = art - dart;
+                }
+                if (delta * rate < dust) {
 
                     // If the leftover Vault would be dusty, just liquidate it entirely.
                     // This will result in at least one of dirt_i > hole_i or Dirt > Hole becoming true.
