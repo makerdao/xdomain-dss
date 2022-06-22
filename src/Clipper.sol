@@ -156,6 +156,16 @@ contract Clipper {
     }
 
     // --- Administration ---
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+    
     function file(bytes32 what, uint256 data) external auth lock {
         if      (what == "buf")         buf = data;
         else if (what == "tail")       tail = data;           // Time elapsed before auction reset
