@@ -25,6 +25,7 @@ interface VatLike {
     function ilks(bytes32) external returns (uint256, uint256, uint256, uint256, uint256);
     function suck(address,address,uint256) external;
     function dust(bytes32) external view returns (uint256);
+    function heal(uint256) external;
 }
 
 interface PipLike {
@@ -39,6 +40,7 @@ interface SpotterLike {
 interface DogLike {
     function chop(bytes32) external returns (uint256);
     function digs(bytes32, uint256) external;
+    function flog(uint256) external;
 }
 
 interface ClipperCallee {
@@ -67,12 +69,14 @@ contract Clipper {
     uint64  public chip;   // Percentage of tab to suck from vow to incentivize keepers         [wad]
     uint192 public tip;    // Flat fee to suck from vow to incentivize keepers                  [rad]
     uint256 public chost;  // Cache the ilk dust times the ilk chop to prevent excessive SLOADs [rad]
+    uint256 public wait;   // Delay before auction bad debt can be sent to vow                  [seconds]
 
     uint256   public kicks;   // Total auctions
     uint256[] public active;  // Array of active auction ids
 
     struct Sale {
         uint256 pos;  // Index in active array
+        uint256 sin;  // Bad Debt           [rad]
         uint256 tab;  // Dai to raise       [rad]
         uint256 lot;  // collateral to sell [wad]
         address usr;  // Liquidated CDP
@@ -100,6 +104,7 @@ contract Clipper {
     event Kick(
         uint256 indexed id,
         uint256 top,
+        uint256 sin,
         uint256 tab,
         uint256 lot,
         address indexed usr,
@@ -111,6 +116,7 @@ contract Clipper {
         uint256 max,
         uint256 price,
         uint256 owe,
+        uint256 sin,
         uint256 tab,
         uint256 lot,
         address indexed usr
@@ -126,6 +132,7 @@ contract Clipper {
     );
 
     event Yank(uint256 id);
+    event Flog(uint256 id, uint256 sin);
 
     modifier auth {
         require(wards[msg.sender] == 1, "Clipper/not-authorized");
@@ -173,6 +180,7 @@ contract Clipper {
         else if (what == "chip")       chip = uint64(data);   // Percentage of tab to incentivize (max: 2^64 - 1 => 18.xxx WAD = 18xx%)
         else if (what == "tip")         tip = uint192(data);  // Flat fee to incentivize keepers (max: 2^192 - 1 => 6.277T RAD)
         else if (what == "stopped") stopped = data;           // Set breaker (0, 1, 2, or 3)
+        else if (what == "wait")       wait = data;           // Set bad debt timeout
         else revert("Clipper/file-unrecognized-param");
         emit File(what, data);
     }
@@ -227,6 +235,7 @@ contract Clipper {
     // multiplicative factor to increase the starting price, and `par` is a
     // reference per DAI.
     function kick(
+        uint256 sin,  // Bad Debt               [rad]
         uint256 tab,  // Debt                   [rad]
         uint256 lot,  // Collateral             [wad]
         address usr,  // Address that will receive any leftover collateral
@@ -247,6 +256,7 @@ contract Clipper {
             sales[id].pos = active.length - 1;
         }
 
+        sales[id].sin = sin;
         sales[id].tab = tab;
         sales[id].lot = lot;
         sales[id].usr = usr;
@@ -266,7 +276,7 @@ contract Clipper {
             vat.suck(vow, kpr, coin);
         }
 
-        emit Kick(id, top, tab, lot, usr, kpr, coin);
+        emit Kick(id, top, sin, tab, lot, usr, kpr, coin);
     }
 
     // Reset an auction
@@ -355,6 +365,7 @@ contract Clipper {
 
         uint256 lot = sales[id].lot;
         uint256 tab = sales[id].tab;
+        uint256 sin = sales[id].sin;
         uint256 owe;
 
         {
@@ -403,8 +414,16 @@ contract Clipper {
                 ClipperCallee(who).clipperCall(msg.sender, owe, slice, data);
             }
 
-            // Get DAI from caller
-            vat.move(msg.sender, vow, owe);
+            // Get DAI from caller, heal the bad debt and send the rest to the vow
+            vat.move(msg.sender, address(this), owe);
+            uint256 heal = min(sin, owe);
+            if (sin > 0) {
+                vat.heal(heal);
+                unchecked {
+                    sin = sin - heal;
+                }
+            }
+            vat.move(address(this), vow, owe - heal);
 
             // Removes Dai out for liquidation from accumulator
             unchecked {
@@ -418,14 +437,22 @@ contract Clipper {
             vat.flux(ilk, address(this), usr, lot);
             _remove(id);
         } else {
+            sales[id].sin = sin;
             sales[id].tab = tab;
             sales[id].lot = lot;
         }
 
-        emit Take(id, max, price, owe, tab, lot, usr);
+        emit Take(id, max, price, owe, sin, tab, lot, usr);
     }
 
     function _remove(uint256 id) internal {
+        // Push any remaining sin to the vow
+        uint256 sin = sales[id].sin;
+        if (sin > 0) {
+            dog.flog(sin);
+            vat.heal(sin);
+        }
+
         uint256 _move;
         unchecked {
             _move = active[active.length - 1];
@@ -481,5 +508,16 @@ contract Clipper {
         vat.flux(ilk, address(this), msg.sender, sales[id].lot);
         _remove(id);
         emit Yank(id);
+    }
+
+    // Send auction bad debt to vow after wait period
+    function flog(uint256 id) external lock {
+        require(sales[id].usr != address(0), "Clipper/not-running-auction");
+        require(uint256(sales[id].tic) + wait <= block.timestamp, "Clipper/wait-not-elapsed");
+        uint256 sin = sales[id].sin;
+        dog.flog(sin);
+        vat.heal(sin);
+        sales[id].sin = 0;
+        emit Flog(id, sin);
     }
 }
