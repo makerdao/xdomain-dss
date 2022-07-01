@@ -224,24 +224,26 @@ contract Dog {
             ilk, urn, milk.clip, milk.clip, -int256(dink), -int256(dart)
         );
 
-        uint256 due = dart * rate;
-
         {   // Avoid stack too deep
             // This calcuation will overflow if dart*rate exceeds ~10^14
-            uint256 tab = due * milk.chop / WAD;
+            uint256 tab = (dart * rate) * milk.chop / WAD;
             Dirt = Dirt + tab;
             ilks[ilk].dirt = milk.dirt + tab;
 
-            id = ClipperLike(milk.clip).kick({
-                sin: due,
-                tab: tab,
-                lot: dink,
-                usr: urn,
-                kpr: kpr
-            });
+            unchecked {
+                id = ClipperLike(milk.clip).kick({
+                    sin: dart * rate,
+                    tab: tab,
+                    lot: dink,
+                    usr: urn,
+                    kpr: kpr
+                });
+            }
         }
 
-        emit Bark(ilk, urn, dink, dart, due, milk.clip, id);
+        unchecked {
+            emit Bark(ilk, urn, dink, dart, dart * rate, milk.clip, id);
+        }
     }
 
     function digs(bytes32 ilk, uint256 rad) external auth {

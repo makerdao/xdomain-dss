@@ -116,7 +116,6 @@ contract Clipper {
         uint256 max,
         uint256 price,
         uint256 owe,
-        uint256 sin,
         uint256 tab,
         uint256 lot,
         address indexed usr
@@ -365,7 +364,6 @@ contract Clipper {
 
         uint256 lot = sales[id].lot;
         uint256 tab = sales[id].tab;
-        uint256 sin = sales[id].sin;
         uint256 owe;
 
         {
@@ -416,18 +414,22 @@ contract Clipper {
 
             // Get DAI from caller, heal the bad debt and send the rest to the vow
             vat.move(msg.sender, address(this), owe);
-            uint256 heal = min(sin, owe);
-            if (sin > 0) {
-                vat.heal(heal);
-                unchecked {
-                    sin = sin - heal;
-                }
-            }
-            vat.move(address(this), vow, owe - heal);
 
             // Removes Dai out for liquidation from accumulator
             unchecked {
                 dog_.digs(ilk, lot == 0 ? tab + owe : owe);
+            }
+        }
+
+        // Heal any bad debt and send the rest to the vow
+        {
+            uint256 sin = sales[id].sin;
+            if (sin > 0) {
+                uint256 heal = min(sin, owe);
+                vat.heal(heal);
+                vat.move(address(this), vow, owe - heal);
+            } else {
+                vat.move(address(this), vow, owe);
             }
         }
 
@@ -437,12 +439,15 @@ contract Clipper {
             vat.flux(ilk, address(this), usr, lot);
             _remove(id);
         } else {
-            sales[id].sin = sin;
+            unchecked {
+                if (owe >= sales[id].sin) sales[id].sin = 0;
+                else sales[id].sin = sales[id].sin - owe;    // Stack too deep cant use cached value
+            }
             sales[id].tab = tab;
             sales[id].lot = lot;
         }
 
-        emit Take(id, max, price, owe, sin, tab, lot, usr);
+        emit Take(id, max, price, owe, tab, lot, usr);
     }
 
     function _remove(uint256 id) internal {

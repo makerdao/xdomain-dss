@@ -7,10 +7,6 @@ import { DSTest } from "ds-test/test.sol";
 import { Vat } from "../Vat.sol";
 import { Dog } from "../Dog.sol";
 
-contract VowMock {
-    function fess (uint256 due) public {}
-}
-
 contract ClipperMock {
     bytes32 public ilk;
     function setIlk(bytes32 wat) external {
@@ -31,7 +27,7 @@ contract DogTest is DSTest {
     uint256 constant RAY = 1E27;
     uint256 constant RAD = 1E45;
     Vat vat;
-    VowMock vow;
+    address vow;
     ClipperMock clip;
     Dog dog;
 
@@ -40,7 +36,7 @@ contract DogTest is DSTest {
         vat.init(ilk);
         vat.file(ilk, "spot", THOUSAND * RAY);
         vat.file(ilk, "dust", 100 * RAD);
-        vow = new VowMock();
+        vow = address(123);
         clip = new ClipperMock();
         clip.setIlk(ilk);
         dog = new Dog(address(vat));
