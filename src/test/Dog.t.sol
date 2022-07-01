@@ -12,7 +12,7 @@ contract ClipperMock {
     function setIlk(bytes32 wat) external {
         ilk = wat;
     }
-    function kick(uint256, uint256, address, address)
+    function kick(uint256, uint256, uint256, address, address)
         external pure returns (uint256 id) {
         id = 42;
     }

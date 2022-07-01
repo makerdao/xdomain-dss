@@ -434,8 +434,10 @@ contract Clipper {
         }
 
         if (lot == 0) {
+            sales[id].sin = 0;
             _remove(id);
         } else if (tab == 0) {
+            sales[id].sin = 0;
             vat.flux(ilk, address(this), usr, lot);
             _remove(id);
         } else {

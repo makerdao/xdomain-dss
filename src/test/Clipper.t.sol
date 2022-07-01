@@ -523,25 +523,25 @@ contract ClipperTest is DSTest {
         clip.redo(1, address(this));
     }
 
-    function try_kick(uint256 tab, uint256 lot, address usr, address kpr) internal returns (bool ok) {
-        string memory sig = "kick(uint256,uint256,address,address)";
-        (ok,) = address(clip).call(abi.encodeWithSignature(sig, tab, lot, usr, kpr));
+    function try_kick(uint256 sin, uint256 tab, uint256 lot, address usr, address kpr) internal returns (bool ok) {
+        string memory sig = "kick(uint256,uint256,uint256,address,address)";
+        (ok,) = address(clip).call(abi.encodeWithSignature(sig, sin, tab, lot, usr, kpr));
     }
 
     function test_kick_basic() public {
-        assertTrue(try_kick(1 ether, 2 ether, address(1), address(this)));
+        assertTrue(try_kick(1 ether, 1 ether, 2 ether, address(1), address(this)));
     }
 
     function test_kick_zero_tab() public {
-        assertTrue(!try_kick(0, 2 ether, address(1), address(this)));
+        assertTrue(!try_kick(1 ether, 0, 2 ether, address(1), address(this)));
     }
 
     function test_kick_zero_lot() public {
-        assertTrue(!try_kick(1 ether, 0, address(1), address(this)));
+        assertTrue(!try_kick(1 ether, 1 ether, 0, address(1), address(this)));
     }
 
     function test_kick_zero_usr() public {
-        assertTrue(!try_kick(1 ether, 2 ether, address(0), address(this)));
+        assertTrue(!try_kick(1 ether, 1 ether, 2 ether, address(0), address(this)));
     }
 
     function try_bark(bytes32 ilk_, address urn_) internal returns (bool ok) {
