@@ -59,6 +59,7 @@ contract VatTest is DSSTest {
     }
 
     function testConstructor() public {
+        assertEq(vat.live(), 1);
         assertEq(vat.wards(address(this)), 1);
     }
 
@@ -121,6 +122,54 @@ contract VatTest is DSSTest {
         for (uint256 i = 0; i < funcs.length; i++) {
             assertRevert(address(vat), funcs[i], "Vat/not-live");
         }
+    }
+
+    function testInit() public {
+        assertEq(vat.rate(ILK), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Init(ILK);
+        vat.init(ILK);
+
+        assertEq(vat.rate(ILK), RAY);
+    }
+
+    function testInitCantSetTwice() public {
+        vat.init(ILK);
+        vm.expectRevert("Vat/ilk-already-init");
+        vat.init(ILK);
+    }
+
+    function testCage() public {
+        assertEq(vat.live(), 1);
+
+        vm.expectEmit(true, true, true, true);
+        emit Cage();
+        vat.cage();
+
+        assertEq(vat.live(), 0);
+    }
+
+    function testHope() public {
+        assertEq(vat.can(address(this), TEST_ADDRESS), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Hope(address(this), TEST_ADDRESS);
+        vat.hope(TEST_ADDRESS);
+
+        assertEq(vat.can(address(this), TEST_ADDRESS), 1);
+    }
+
+    function testNope() public {
+        vat.hope(TEST_ADDRESS);
+        
+        assertEq(vat.can(address(this), TEST_ADDRESS), 1);
+
+        vm.expectEmit(true, true, true, true);
+        emit Nope(address(this), TEST_ADDRESS);
+        vat.nope(TEST_ADDRESS);
+
+        assertEq(vat.can(address(this), TEST_ADDRESS), 0);
     }
 
 }
