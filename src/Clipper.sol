@@ -522,6 +522,7 @@ contract Clipper {
         require(sales[id].usr != address(0), "Clipper/not-running-auction");
         require(uint256(sales[id].tic) + wait <= block.timestamp, "Clipper/wait-not-elapsed");
         uint256 sin = sales[id].sin;
+        require(sin > 0, "Clipper/zero-sin");
         dog.flog(sin);
         vat.heal(sin);
         sales[id].sin = 0;

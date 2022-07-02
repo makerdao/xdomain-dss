@@ -291,6 +291,8 @@ contract ClipperTest is DSTest {
         clip.file("cusp", ray(0.3 ether));    // 70% drop before reset
         clip.file("tail", 3600);              // 1 hour before reset
 
+        clip.file("wait", 2 hours);           // 2 hours before bad debt can be sent to vow
+
         (ink, art) = vat.urns(ilk, me);
         assertEq(ink, 40 ether);
         assertEq(art, 100 ether);
@@ -554,6 +556,11 @@ contract ClipperTest is DSTest {
     function try_bark(bytes32 ilk_, address urn_) internal returns (bool ok) {
         string memory sig = "bark(bytes32,address,address)";
         (ok,) = address(dog).call(abi.encodeWithSignature(sig, ilk_, urn_, address(this)));
+    }
+
+    function try_flog(uint256 id_) internal returns (bool ok) {
+        string memory sig = "flog(uint256)";
+        (ok,) = address(clip).call(abi.encodeWithSignature(sig, id_));
     }
 
     function test_bark_not_leaving_dust() public {
@@ -1744,5 +1751,26 @@ contract ClipperTest is DSTest {
         assertEq(usr, address(0));
         assertEq(uint256(tic), 0);
         assertEq(top, 0);
+    }
+
+    function test_flog() public takeSetup {
+        (, uint256 sin,,,,,) = clip.sales(1);
+        assertTrue(!try_flog(1));   // Cannot flog until wait elapses
+        assertEq(sin, rad(100 ether));
+        assertEq(vat.sin(address(clip)), rad(100 ether));
+        assertEq(vat.dai(address(clip)), 0);
+        assertEq(vat.sin(address(vow)), 0);
+        assertEq(vat.sin(address(vow)), 0);
+
+        hevm.warp(block.timestamp + 2 hours);
+        clip.flog(1);
+
+        (, sin,,,,,) = clip.sales(1);
+        assertEq(sin, 0);
+        assertEq(vat.sin(address(clip)), 0);
+        assertEq(vat.dai(address(clip)), 0);
+        assertEq(vat.sin(address(vow)), rad(100 ether));
+
+        assertTrue(!try_flog(1));   // Cannot flog since sin is 0 now
     }
 }

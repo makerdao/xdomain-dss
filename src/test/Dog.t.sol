@@ -284,4 +284,14 @@ contract DogTest is DSTest {
         setUrn(WAD, Hole * WAD * WAD / chop);
         assertTrue(!try_bark(ilk, usr, address(this)));  // should revert, as the auction would be dusty
     }
+
+    function test_flog() public {
+        assertEq(vat.dai(address(this)), 0);
+        assertEq(vat.sin(address(vow)), 0);
+
+        dog.flog(100 * RAD);
+
+        assertEq(vat.dai(address(this)), 100 * RAD);
+        assertEq(vat.sin(address(vow)), 100 * RAD);
+    }
 }
