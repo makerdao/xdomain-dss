@@ -16,10 +16,6 @@ import "../Dog.sol";
 
 import {MockToken} from "./mocks/Token.sol";
 
-contract VowMock {
-    function fess (uint256 due) public {}
-}
-
 interface Hevm {
     function warp(uint256) external;
     function store(address,bytes32,bytes32) external;
@@ -173,7 +169,7 @@ contract KickGuy is Guy {
         address sender, uint256 owe, uint256 slice, bytes calldata data
     ) external {
         sender; owe; slice; data;
-        clip.kick(1, 1, address(0), address(0));
+        clip.kick(1, 1, 1, address(0), address(0));
     }
 }
 
@@ -234,7 +230,7 @@ contract ClipperTest is DSTest {
     Vat     vat;
     Dog     dog;
     Spotter spot;
-    VowMock vow;
+    address vow;
     DSValue pip;
     MockToken gold;
     GemJoin goldJoin;
@@ -295,6 +291,8 @@ contract ClipperTest is DSTest {
         clip.file("cusp", ray(0.3 ether));    // 70% drop before reset
         clip.file("tail", 3600);              // 1 hour before reset
 
+        clip.file("wait", 2 hours);           // 2 hours before bad debt can be sent to vow
+
         (ink, art) = vat.urns(ilk, me);
         assertEq(ink, 40 ether);
         assertEq(art, 100 ether);
@@ -307,7 +305,7 @@ contract ClipperTest is DSTest {
         assertEq(ink, 0);
         assertEq(art, 0);
 
-        (pos, tab, lot, usr, tic, top) = clip.sales(1);
+        (pos,, tab, lot, usr, tic, top) = clip.sales(1);
         assertEq(pos, 0);
         assertEq(tab, rad(110 ether));
         assertEq(lot, 40 ether);
@@ -344,7 +342,7 @@ contract ClipperTest is DSTest {
         spot = new Spotter(address(vat));
         vat.rely(address(spot));
 
-        vow = new VowMock();
+        vow = address(123);
         gold = new MockToken("GLD");
         goldJoin = new GemJoin(address(vat), ilk, address(gold));
         vat.rely(address(goldJoin));
@@ -426,6 +424,7 @@ contract ClipperTest is DSTest {
 
     function test_kick() public {
         uint256 pos;
+        uint256 sin;
         uint256 tab;
         uint256 lot;
         address usr;
@@ -438,8 +437,9 @@ contract ClipperTest is DSTest {
         clip.file("chip", 0);              // No linear increase
 
         assertEq(clip.kicks(), 0);
-        (pos, tab, lot, usr, tic, top) = clip.sales(1);
+        (pos, sin, tab, lot, usr, tic, top) = clip.sales(1);
         assertEq(pos, 0);
+        assertEq(sin, 0);
         assertEq(tab, 0);
         assertEq(lot, 0);
         assertEq(usr, address(0));
@@ -454,14 +454,16 @@ contract ClipperTest is DSTest {
         Guy(ali).bark(dog, ilk, me, address(ali));
 
         assertEq(clip.kicks(), 1);
-        (pos, tab, lot, usr, tic, top) = clip.sales(1);
+        (pos, sin, tab, lot, usr, tic, top) = clip.sales(1);
         assertEq(pos, 0);
+        assertEq(sin, rad(100 ether));
         assertEq(tab, rad(110 ether));
         assertEq(lot, 40 ether);
         assertEq(usr, me);
         assertEq(uint256(tic), block.timestamp);
         assertEq(top, ray(4 ether));
         assertEq(vat.gem(ilk, me), 960 ether);
+        assertEq(vat.sin(address(clip)), rad(100 ether));
         assertEq(vat.dai(ali), rad(1100 ether)); // Paid "tip" amount of DAI for calling bark()
         (ink, art) = vat.urns(ilk, me);
         assertEq(ink, 0 ether);
@@ -476,14 +478,16 @@ contract ClipperTest is DSTest {
         pip.poke(bytes32(uint256(4 ether))); // Spot = $2
         spot.poke(ilk);          // Now unsafe
 
-        (pos, tab, lot, usr, tic, top) = clip.sales(2);
+        (pos, sin, tab, lot, usr, tic, top) = clip.sales(2);
         assertEq(pos, 0);
+        assertEq(sin, 0);
         assertEq(tab, 0);
         assertEq(lot, 0);
         assertEq(usr, address(0));
         assertEq(uint256(tic), 0);
         assertEq(top, 0);
         assertEq(vat.gem(ilk, me), 920 ether);
+        assertEq(vat.sin(address(clip)), rad(100 ether));
 
         clip.file(bytes32("buf"),  ray(1.25 ether)); // 25% Initial price buffer
 
@@ -495,14 +499,16 @@ contract ClipperTest is DSTest {
         Guy(bob).bark(dog, ilk, me, address(bob));
 
         assertEq(clip.kicks(), 2);
-        (pos, tab, lot, usr, tic, top) = clip.sales(2);
+        (pos, sin, tab, lot, usr, tic, top) = clip.sales(2);
         assertEq(pos, 1);
+        assertEq(sin, rad(100 ether));
         assertEq(tab, rad(110 ether));
         assertEq(lot, 40 ether);
         assertEq(usr, me);
         assertEq(uint256(tic), block.timestamp);
         assertEq(top, ray(5 ether));
         assertEq(vat.gem(ilk, me), 920 ether);
+        assertEq(vat.sin(address(clip)), rad(200 ether));
         (ink, art) = vat.urns(ilk, me);
         assertEq(ink, 0 ether);
         assertEq(art, 0 ether);
@@ -526,25 +532,25 @@ contract ClipperTest is DSTest {
         clip.redo(1, address(this));
     }
 
-    function try_kick(uint256 tab, uint256 lot, address usr, address kpr) internal returns (bool ok) {
-        string memory sig = "kick(uint256,uint256,address,address)";
-        (ok,) = address(clip).call(abi.encodeWithSignature(sig, tab, lot, usr, kpr));
+    function try_kick(uint256 sin, uint256 tab, uint256 lot, address usr, address kpr) internal returns (bool ok) {
+        string memory sig = "kick(uint256,uint256,uint256,address,address)";
+        (ok,) = address(clip).call(abi.encodeWithSignature(sig, sin, tab, lot, usr, kpr));
     }
 
     function test_kick_basic() public {
-        assertTrue(try_kick(1 ether, 2 ether, address(1), address(this)));
+        assertTrue(try_kick(1 ether, 1 ether, 2 ether, address(1), address(this)));
     }
 
     function test_kick_zero_tab() public {
-        assertTrue(!try_kick(0, 2 ether, address(1), address(this)));
+        assertTrue(!try_kick(1 ether, 0, 2 ether, address(1), address(this)));
     }
 
     function test_kick_zero_lot() public {
-        assertTrue(!try_kick(1 ether, 0, address(1), address(this)));
+        assertTrue(!try_kick(1 ether, 1 ether, 0, address(1), address(this)));
     }
 
     function test_kick_zero_usr() public {
-        assertTrue(!try_kick(1 ether, 2 ether, address(0), address(this)));
+        assertTrue(!try_kick(1 ether, 1 ether, 2 ether, address(0), address(this)));
     }
 
     function try_bark(bytes32 ilk_, address urn_) internal returns (bool ok) {
@@ -552,8 +558,14 @@ contract ClipperTest is DSTest {
         (ok,) = address(dog).call(abi.encodeWithSignature(sig, ilk_, urn_, address(this)));
     }
 
+    function try_flog(uint256 id_) internal returns (bool ok) {
+        string memory sig = "flog(uint256)";
+        (ok,) = address(clip).call(abi.encodeWithSignature(sig, id_));
+    }
+
     function test_bark_not_leaving_dust() public {
         uint256 pos;
+        uint256 sin;
         uint256 tab;
         uint256 lot;
         address usr;
@@ -566,8 +578,9 @@ contract ClipperTest is DSTest {
         dog.file(ilk, "chop", 1 ether); // 0% chop (for precise calculations)
 
         assertEq(clip.kicks(), 0);
-        (pos, tab, lot, usr, tic, top) = clip.sales(1);
+        (pos, sin, tab, lot, usr, tic, top) = clip.sales(1);
         assertEq(pos, 0);
+        assertEq(sin, 0);
         assertEq(tab, 0);
         assertEq(lot, 0);
         assertEq(usr, address(0));
@@ -581,8 +594,9 @@ contract ClipperTest is DSTest {
         assertTrue(try_bark(ilk, me)); // art - dart = 100 - 80 = dust (= 20)
 
         assertEq(clip.kicks(), 1);
-        (pos, tab, lot, usr, tic, top) = clip.sales(1);
+        (pos, sin, tab, lot, usr, tic, top) = clip.sales(1);
         assertEq(pos, 0);
+        assertEq(sin, rad(80 ether));
         assertEq(tab, rad(80 ether)); // No chop
         assertEq(lot, 32 ether);
         assertEq(usr, me);
@@ -596,6 +610,7 @@ contract ClipperTest is DSTest {
 
     function test_bark_not_leaving_dust_over_hole() public {
         uint256 pos;
+        uint256 sin;
         uint256 tab;
         uint256 lot;
         address usr;
@@ -608,8 +623,9 @@ contract ClipperTest is DSTest {
         dog.file(ilk, "chop", 1 ether); // 0% chop (for precise calculations)
 
         assertEq(clip.kicks(), 0);
-        (pos, tab, lot, usr, tic, top) = clip.sales(1);
+        (pos, sin, tab, lot, usr, tic, top) = clip.sales(1);
         assertEq(pos, 0);
+        assertEq(sin, 0);
         assertEq(tab, 0);
         assertEq(lot, 0);
         assertEq(usr, address(0));
@@ -623,8 +639,9 @@ contract ClipperTest is DSTest {
         assertTrue(try_bark(ilk, me)); // art - dart = 100 - (80 + 1 wei) < dust (= 20) then the whole debt is taken
 
         assertEq(clip.kicks(), 1);
-        (pos, tab, lot, usr, tic, top) = clip.sales(1);
+        (pos, sin, tab, lot, usr, tic, top) = clip.sales(1);
         assertEq(pos, 0);
+        assertEq(sin, rad(100 ether));
         assertEq(tab, rad(100 ether)); // No chop
         assertEq(lot, 40 ether);
         assertEq(usr, me);
@@ -656,7 +673,7 @@ contract ClipperTest is DSTest {
         clip.upchost();
 
         assertEq(clip.kicks(), 0);
-        (pos, tab, lot, usr, tic, top) = clip.sales(1);
+        (pos,, tab, lot, usr, tic, top) = clip.sales(1);
         assertEq(pos, 0);
         assertEq(tab, 0);
         assertEq(lot, 0);
@@ -673,7 +690,7 @@ contract ClipperTest is DSTest {
         assertTrue(try_bark(ilk, me));
 
         assertEq(clip.kicks(), 1);
-        (pos, tab, lot, usr, tic, top) = clip.sales(1);
+        (pos,, tab, lot, usr, tic, top) = clip.sales(1);
         assertEq(pos, 0);
         assertEq(tab, mul(100 ether, rate));  // No chop
         assertEq(lot, 40 ether);
@@ -706,7 +723,7 @@ contract ClipperTest is DSTest {
         clip.upchost();
 
         assertEq(clip.kicks(), 0);
-        (pos, tab, lot, usr, tic, top) = clip.sales(1);
+        (pos,, tab, lot, usr, tic, top) = clip.sales(1);
         assertEq(pos, 0);
         assertEq(tab, 0);
         assertEq(lot, 0);
@@ -723,7 +740,7 @@ contract ClipperTest is DSTest {
         assertTrue(try_bark(ilk, me));
 
         assertEq(clip.kicks(), 1);
-        (pos, tab, lot, usr, tic, top) = clip.sales(1);
+        (pos,, tab, lot, usr, tic, top) = clip.sales(1);
         assertEq(pos, 0);
         assertEq(tab, 816 * RAD / 10);  // Equal to ilk.hole
         assertEq(lot, 32 ether);
@@ -745,7 +762,7 @@ contract ClipperTest is DSTest {
 
         dog.bark(ilk, me, address(this));
 
-        (, uint256 tab,,,,) = clip.sales(1);
+        (,, uint256 tab,,,,) = clip.sales(1);
 
         assertEq(dog.Dirt(), tab);
         (,,, dirt) = dog.ilks(ilk);
@@ -779,7 +796,7 @@ contract ClipperTest is DSTest {
 
         dog.bark(ilk2, me, address(this));
 
-        (, uint256 tab2,,,,) = clip2.sales(1);
+        (,, uint256 tab2,,,,) = clip2.sales(1);
 
         assertEq(dog.Dirt(), tab + tab2);
         (,,, dirt) = dog.ilks(ilk);
@@ -800,7 +817,7 @@ contract ClipperTest is DSTest {
 
         dog.bark(ilk, me, address(this));
 
-        (, uint256 tab, uint256 lot,,,) = clip.sales(1);
+        (,, uint256 tab, uint256 lot,,,) = clip.sales(1);
 
         (, uint256 rate,,,) = vat.ilks(ilk);
 
@@ -827,7 +844,7 @@ contract ClipperTest is DSTest {
 
         dog.bark(ilk, me, address(this));
 
-        (, uint256 tab, uint256 lot,,,) = clip.sales(1);
+        (,, uint256 tab, uint256 lot,,,) = clip.sales(1);
 
         (, uint256 rate,,,) = vat.ilks(ilk);
 
@@ -849,12 +866,14 @@ contract ClipperTest is DSTest {
 
     function test_take_zero_usr() public takeSetup {
         // Auction id 2 is unpopulated.
-        (,,, address usr,,) = clip.sales(2);
+        (,,,, address usr,,) = clip.sales(2);
         assertEq(usr, address(0));
         assertTrue(!try_take(2, 25 ether, ray(5 ether), address(ali), ""));
     }
 
     function test_take_over_tab() public takeSetup {
+        assertEq(vat.sin(address(clip)), rad(100 ether));
+
         // Bid so owe (= 25 * 5 = 125 RAD) > tab (= 110 RAD)
         // Readjusts slice to be tab/top = 25
         Guy(ali).take({
@@ -868,10 +887,13 @@ contract ClipperTest is DSTest {
         assertEq(vat.gem(ilk, ali), 22 ether);  // Didn't take whole lot
         assertEq(vat.dai(ali), rad(890 ether)); // Didn't pay more than tab (110)
         assertEq(vat.gem(ilk, me),  978 ether); // 960 + (40 - 22) returned to usr
+        assertEq(vat.sin(address(clip)), 0);
 
         // Assert auction ends
-        (uint256 pos, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
+        (uint256 pos, uint256 sin, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
         assertEq(pos, 0);
+        assertEq(sin, 0);
+        assertEq(vat.sin(address(clip)), 0);
         assertEq(tab, 0);
         assertEq(lot, 0);
         assertEq(usr, address(0));
@@ -898,8 +920,9 @@ contract ClipperTest is DSTest {
         assertEq(vat.gem(ilk, me), 978 ether);  // 960 + (40 - 22) returned to usr
 
         // Assert auction ends
-        (uint256 pos, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
+        (uint256 pos, uint256 sin, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
         assertEq(pos, 0);
+        assertEq(sin, 0);
         assertEq(tab, 0);
         assertEq(lot, 0);
         assertEq(usr, address(0));
@@ -926,8 +949,10 @@ contract ClipperTest is DSTest {
         assertEq(vat.gem(ilk, me), 960 ether);  // Collateral not returned (yet)
 
         // Assert auction DOES NOT end
-        (uint256 pos, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
+        (uint256 pos, uint256 sin, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
         assertEq(pos, 0);
+        assertEq(sin, rad(45 ether));  // 100 - 5 * 11
+        assertEq(vat.sin(address(clip)), rad(45 ether));
         assertEq(tab, rad(55 ether));  // 110 - 5 * 11
         assertEq(lot, 29 ether);       // 40 - 11
         assertEq(usr, me);
@@ -955,8 +980,9 @@ contract ClipperTest is DSTest {
         assertEq(vat.gem(ilk, me), 960 ether);  // Collateral not returned
 
         // Assert auction ends
-        (uint256 pos, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
+        (uint256 pos, uint256 sin, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
         assertEq(pos, 0);
+        assertEq(sin, 0);
         assertEq(tab, 0);
         assertEq(lot, 0);
         assertEq(usr, address(0));
@@ -981,7 +1007,7 @@ contract ClipperTest is DSTest {
     }
 
     function test_take_bid_recalculates_due_to_chost_check() public takeSetup {
-        (, uint256 tab, uint256 lot,,,) = clip.sales(1);
+        (,, uint256 tab, uint256 lot,,,) = clip.sales(1);
         assertEq(tab, rad(110 ether));
         assertEq(lot, 40 ether);
 
@@ -1000,7 +1026,7 @@ contract ClipperTest is DSTest {
             data: ""
         });
 
-        (, tab, lot,,,) = clip.sales(1);
+        (,, tab, lot,,,) = clip.sales(1);
         assertEq(tab, clip.chost());
         assertEq(lot, 40 ether - (110 * RAD - clip.chost()) / price);
     }
@@ -1008,7 +1034,7 @@ contract ClipperTest is DSTest {
     function test_take_bid_avoids_recalculate_due_no_more_lot() public takeSetup {
         hevm.warp(block.timestamp + 60); // Reducing the price
 
-        (, uint256 tab, uint256 lot,,,) = clip.sales(1);
+        (,, uint256 tab, uint256 lot,,,) = clip.sales(1);
         assertEq(tab, rad(110 ether));
         assertEq(lot, 40 ether);
 
@@ -1028,7 +1054,7 @@ contract ClipperTest is DSTest {
         // 40 * 2.73 = 109.42...
         // It means a very low amount of tab (< dust) would remain but doesn't matter
         // as the auction is finished because there isn't more lot
-        (, tab, lot,,,) = clip.sales(1);
+        (,, tab, lot,,,) = clip.sales(1);
         assertEq(tab, 0);
         assertEq(lot, 0);
     }
@@ -1045,7 +1071,7 @@ contract ClipperTest is DSTest {
             data: ""
         });
 
-        (, uint256 tab, uint256 lot,,,) = clip.sales(1);
+        (,, uint256 tab, uint256 lot,,,) = clip.sales(1);
         assertEq(tab, rad(22 ether));
         assertEq(lot, 22.4 ether);
         assertTrue(!(tab > clip.chost()));
@@ -1069,6 +1095,7 @@ contract ClipperTest is DSTest {
 
     function test_take_multiple_bids_different_prices() public takeSetup {
         uint256 pos;
+        uint256 sin;
         uint256 tab;
         uint256 lot;
         address usr;
@@ -1089,8 +1116,10 @@ contract ClipperTest is DSTest {
         assertEq(vat.gem(ilk, me), 960 ether);  // Collateral not returned (yet)
 
         // Assert auction DOES NOT end
-        (pos, tab, lot, usr, tic, top) = clip.sales(1);
+        (pos, sin, tab, lot, usr, tic, top) = clip.sales(1);
         assertEq(pos, 0);
+        assertEq(sin, rad(50 ether));  // 100 - 5 * 10
+        assertEq(vat.sin(address(clip)), rad(50 ether));
         assertEq(tab, rad(60 ether));  // 110 - 5 * 10
         assertEq(lot, 30 ether);       // 40 - 10
         assertEq(usr, me);
@@ -1109,8 +1138,10 @@ contract ClipperTest is DSTest {
         });
 
         // Assert auction is over
-        (pos, tab, lot, usr, tic, top) = clip.sales(1);
+        (pos, sin, tab, lot, usr, tic, top) = clip.sales(1);
         assertEq(pos, 0);
+        assertEq(sin, 0);
+        assertEq(vat.sin(address(clip)), 0);
         assertEq(tab, 0);
         assertEq(lot, 0 * WAD);
         assertEq(usr, address(0));
@@ -1151,7 +1182,7 @@ contract ClipperTest is DSTest {
 
         pip.poke(bytes32(uint256(3 ether))); // Spot = $1.50 (update price before reset is called)
 
-        (,,,, uint96 ticBefore, uint256 topBefore) = clip.sales(1);
+        (,,,,, uint96 ticBefore, uint256 topBefore) = clip.sales(1);
         assertEq(uint256(ticBefore), startTime);
         assertEq(topBefore, ray(5 ether)); // $4 spot + 25% buffer = $5 (wasn't affected by poke)
 
@@ -1164,7 +1195,7 @@ contract ClipperTest is DSTest {
         assertTrue(needsRedo);
         assertTrue(try_redo(1, address(this)));
 
-        (,,,, uint96 ticAfter, uint256 topAfter) = clip.sales(1);
+        (,,,,, uint96 ticAfter, uint256 topAfter) = clip.sales(1);
         assertEq(uint256(ticAfter), startTime + 3601 seconds);     // (now)
         assertEq(topAfter, ray(3.75 ether)); // $3 spot + 25% buffer = $5 (used most recent OSM price)
     }
@@ -1174,7 +1205,7 @@ contract ClipperTest is DSTest {
 
         pip.poke(bytes32(uint256(3 ether))); // Spot = $1.50 (update price before reset is called)
 
-        (,,,, uint96 ticBefore, uint256 topBefore) = clip.sales(1);
+        (,,,,, uint96 ticBefore, uint256 topBefore) = clip.sales(1);
         assertEq(uint256(ticBefore), startTime);
         assertEq(topBefore, ray(5 ether)); // $4 spot + 25% buffer = $5 (wasn't affected by poke)
 
@@ -1187,7 +1218,7 @@ contract ClipperTest is DSTest {
         assertTrue(needsRedo);
         assertTrue(try_redo(1, address(this)));
 
-        (,,,, uint96 ticAfter, uint256 topAfter) = clip.sales(1);
+        (,,,,, uint96 ticAfter, uint256 topAfter) = clip.sales(1);
         assertEq(uint256(ticAfter), startTime + 1801 seconds);     // (now)
         assertEq(topAfter, ray(3.75 ether)); // $3 spot + 25% buffer = $3.75 (used most recent OSM price)
     }
@@ -1228,6 +1259,7 @@ contract ClipperTest is DSTest {
 
     function test_stopped_kick() public {
         uint256 pos;
+        uint256 sin;
         uint256 tab;
         uint256 lot;
         address usr;
@@ -1237,8 +1269,9 @@ contract ClipperTest is DSTest {
         uint256 art;
 
         assertEq(clip.kicks(), 0);
-        (pos, tab, lot, usr, tic, top) = clip.sales(1);
+        (pos, sin, tab, lot, usr, tic, top) = clip.sales(1);
         assertEq(pos, 0);
+        assertEq(sin, 0);
         assertEq(tab, 0);
         assertEq(lot, 0);
         assertEq(usr, address(0));
@@ -1310,7 +1343,7 @@ contract ClipperTest is DSTest {
 
         pip.poke(bytes32(uint256(3 ether))); // Spot = $1.50 (update price before reset is called)
 
-        (,,,, uint96 ticBefore, uint256 topBefore) = clip.sales(1);
+        (,,,,, uint96 ticBefore, uint256 topBefore) = clip.sales(1);
         assertEq(uint256(ticBefore), startTime);
         assertEq(topBefore, ray(5 ether)); // $4 spot + 25% buffer = $5 (wasn't affected by poke)
 
@@ -1319,7 +1352,7 @@ contract ClipperTest is DSTest {
         hevm.warp(startTime + 3601 seconds);
         assertTrue(try_redo(1, address(this)));
 
-        (,,,, uint96 ticAfter, uint256 topAfter) = clip.sales(1);
+        (,,,,, uint96 ticAfter, uint256 topAfter) = clip.sales(1);
         assertEq(uint256(ticAfter), startTime + 3601 seconds);     // (now)
         assertEq(topAfter, ray(3.75 ether)); // $3 spot + 25% buffer = $5 (used most recent OSM price)
     }
@@ -1331,7 +1364,7 @@ contract ClipperTest is DSTest {
 
         pip.poke(bytes32(uint256(3 ether))); // Spot = $1.50 (update price before reset is called)
 
-        (,,,, uint96 ticBefore, uint256 topBefore) = clip.sales(1);
+        (,,,,, uint96 ticBefore, uint256 topBefore) = clip.sales(1);
         assertEq(uint256(ticBefore), startTime);
         assertEq(topBefore, ray(5 ether)); // $4 spot + 25% buffer = $5 (wasn't affected by poke)
 
@@ -1348,7 +1381,7 @@ contract ClipperTest is DSTest {
 
         pip.poke(bytes32(uint256(3 ether))); // Spot = $1.50 (update price before reset is called)
 
-        (,,,, uint96 ticBefore, uint256 topBefore) = clip.sales(1);
+        (,,,,, uint96 ticBefore, uint256 topBefore) = clip.sales(1);
         assertEq(uint256(ticBefore), startTime);
         assertEq(topBefore, ray(5 ether)); // $4 spot + 25% buffer = $5 (wasn't affected by poke)
 
@@ -1362,7 +1395,7 @@ contract ClipperTest is DSTest {
         clip.file("tip",  rad(100 ether)); // Flat fee of 100 DAI
         clip.file("chip", 0);              // No linear increase
 
-        (, uint256 tab, uint256 lot,,,) = clip.sales(1);
+        (,, uint256 tab, uint256 lot,,,) = clip.sales(1);
 
         assertEq(tab, rad(110 ether));
         assertEq(lot, 40 ether);
@@ -1407,7 +1440,7 @@ contract ClipperTest is DSTest {
             data: ""
         });
 
-        (, tab, lot,,,) = clip.sales(1);
+        (,, tab, lot,,,) = clip.sales(1);
 
         assertEq(tab, rad(110 ether) - 38 ether * price); // > 22 DAI chost
         // When auction is reset the current price of lot
@@ -1435,7 +1468,7 @@ contract ClipperTest is DSTest {
 
     function test_Clipper_yank() public takeSetup {
         uint256 preGemBalance = vat.gem(ilk, address(this));
-        (,, uint256 origLot,,,) = clip.sales(1);
+        (,,, uint256 origLot,,,) = clip.sales(1);
 
         uint startGas = gasleft();
         clip.yank(1);
@@ -1443,8 +1476,9 @@ contract ClipperTest is DSTest {
         emit log_named_uint("yank gas", startGas - endGas);
 
         // Assert that the auction was deleted.
-        (uint256 pos, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
+        (uint256 pos, uint256 sin, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
         assertEq(pos, 0);
+        assertEq(sin, 0);
         assertEq(tab, 0);
         assertEq(lot, 0);
         assertEq(usr, address(0));
@@ -1485,7 +1519,7 @@ contract ClipperTest is DSTest {
         assertEq(pclip.active(0), 1);
         assertEq(pclip.active(1), 2);
         assertEq(pclip.active(2), 5);  // Swapped last for middle
-        (pos,,,,,) = pclip.sales(5);
+        (pos,,,,,,) = pclip.sales(5);
         assertEq(pos, 2);
         assertEq(pclip.active(3), 4);
 
@@ -1494,19 +1528,19 @@ contract ClipperTest is DSTest {
         // [1,2,5]
         assertEq(pclip.count(), 3);
 
-        (pos,,,,,) = pclip.sales(1);
+        (pos,,,,,,) = pclip.sales(1);
         assertEq(pos, 0); // Sale 1 in slot 0
         assertEq(pclip.active(0), 1);
 
-        (pos,,,,,) = pclip.sales(2);
+        (pos,,,,,,) = pclip.sales(2);
         assertEq(pos, 1); // Sale 2 in slot 1
         assertEq(pclip.active(1), 2);
 
-        (pos,,,,,) = pclip.sales(5);
+        (pos,,,,,,) = pclip.sales(5);
         assertEq(pos, 2); // Sale 5 in slot 2
         assertEq(pclip.active(2), 5); // Final element removed
 
-        (pos,,,,,) = pclip.sales(4);
+        (pos,,,,,,) = pclip.sales(4);
         assertEq(pos, 0); // Sale 4 was deleted. Returns 0
     }
 
@@ -1645,7 +1679,7 @@ contract ClipperTest is DSTest {
     function test_gas_bark_kick() public {
         // Assertions to make sure setup is as expected.
         assertEq(clip.kicks(), 0);
-        (uint256 pos, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
+        (uint256 pos, uint256 sin, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
         assertEq(pos, 0);
         assertEq(tab, 0);
         assertEq(lot, 0);
@@ -1682,7 +1716,7 @@ contract ClipperTest is DSTest {
         assertEq(vat.gem(ilk, me), 960 ether);  // Collateral not returned (yet)
 
         // Assert auction DOES NOT end
-        (uint256 pos, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
+        (uint256 pos, uint256 sin, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
         assertEq(pos, 0);
         assertEq(tab, rad(55 ether));  // 110 - 5 * 11
         assertEq(lot, 29 ether);       // 40 - 11
@@ -1710,12 +1744,33 @@ contract ClipperTest is DSTest {
         assertEq(vat.gem(ilk, me),  978 ether); // 960 + (40 - 22) returned to usr
 
         // Assert auction ends
-        (uint256 pos, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
+        (uint256 pos, uint256 sin, uint256 tab, uint256 lot, address usr, uint256 tic, uint256 top) = clip.sales(1);
         assertEq(pos, 0);
         assertEq(tab, 0);
         assertEq(lot, 0);
         assertEq(usr, address(0));
         assertEq(uint256(tic), 0);
         assertEq(top, 0);
+    }
+
+    function test_flog() public takeSetup {
+        (, uint256 sin,,,,,) = clip.sales(1);
+        assertTrue(!try_flog(1));   // Cannot flog until wait elapses
+        assertEq(sin, rad(100 ether));
+        assertEq(vat.sin(address(clip)), rad(100 ether));
+        assertEq(vat.dai(address(clip)), 0);
+        assertEq(vat.sin(address(vow)), 0);
+        assertEq(vat.sin(address(vow)), 0);
+
+        hevm.warp(block.timestamp + 2 hours);
+        clip.flog(1);
+
+        (, sin,,,,,) = clip.sales(1);
+        assertEq(sin, 0);
+        assertEq(vat.sin(address(clip)), 0);
+        assertEq(vat.dai(address(clip)), 0);
+        assertEq(vat.sin(address(vow)), rad(100 ether));
+
+        assertTrue(!try_flog(1));   // Cannot flog since sin is 0 now
     }
 }

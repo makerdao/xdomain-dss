@@ -7,16 +7,12 @@ import { DSTest } from "ds-test/test.sol";
 import { Vat } from "../Vat.sol";
 import { Dog } from "../Dog.sol";
 
-contract VowMock {
-    function fess (uint256 due) public {}
-}
-
 contract ClipperMock {
     bytes32 public ilk;
     function setIlk(bytes32 wat) external {
         ilk = wat;
     }
-    function kick(uint256, uint256, address, address)
+    function kick(uint256, uint256, uint256, address, address)
         external pure returns (uint256 id) {
         id = 42;
     }
@@ -31,7 +27,7 @@ contract DogTest is DSTest {
     uint256 constant RAY = 1E27;
     uint256 constant RAD = 1E45;
     Vat vat;
-    VowMock vow;
+    address vow;
     ClipperMock clip;
     Dog dog;
 
@@ -40,7 +36,7 @@ contract DogTest is DSTest {
         vat.init(ilk);
         vat.file(ilk, "spot", THOUSAND * RAY);
         vat.file(ilk, "dust", 100 * RAD);
-        vow = new VowMock();
+        vow = address(123);
         clip = new ClipperMock();
         clip.setIlk(ilk);
         dog = new Dog(address(vat));
@@ -287,5 +283,15 @@ contract DogTest is DSTest {
         // This will need to be partially liquidated
         setUrn(WAD, Hole * WAD * WAD / chop);
         assertTrue(!try_bark(ilk, usr, address(this)));  // should revert, as the auction would be dusty
+    }
+
+    function test_flog() public {
+        assertEq(vat.dai(address(this)), 0);
+        assertEq(vat.sin(address(vow)), 0);
+
+        dog.flog(100 * RAD);
+
+        assertEq(vat.dai(address(this)), 100 * RAD);
+        assertEq(vat.sin(address(vow)), 100 * RAD);
     }
 }

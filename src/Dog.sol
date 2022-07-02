@@ -22,6 +22,7 @@ pragma solidity ^0.8.13;
 interface ClipperLike {
     function ilk() external view returns (bytes32);
     function kick(
+        uint256 sin,
         uint256 tab,
         uint256 lot,
         address usr,
@@ -44,10 +45,7 @@ interface VatLike {
     function grab(bytes32,address,address,address,int256,int256) external;
     function hope(address) external;
     function nope(address) external;
-}
-
-interface VowLike {
-    function fess(uint256) external;
+    function suck(address,address,uint256) external;
 }
 
 contract Dog {
@@ -65,7 +63,7 @@ contract Dog {
 
     mapping (bytes32 => Ilk) public ilks;
 
-    VowLike public vow;   // Debt Engine
+    address public vow;   // Debt Engine
     uint256 public live;  // Active Flag
     uint256 public Hole;  // Max DAI needed to cover debt+fees of active auctions [rad]
     uint256 public Dirt;  // Amt DAI needed to cover debt+fees of active auctions [rad]
@@ -89,6 +87,7 @@ contract Dog {
       uint256 indexed id
     );
     event Digs(bytes32 indexed ilk, uint256 rad);
+    event Flog(address indexed clip, uint256 rad);
     event Cage();
 
     modifier auth {
@@ -123,7 +122,7 @@ contract Dog {
     }
 
     function file(bytes32 what, address data) external auth {
-        if (what == "vow") vow = VowLike(data);
+        if (what == "vow") vow = data;
         else revert("Dog/file-unrecognized-param");
         emit File(what, data);
     }
@@ -222,33 +221,40 @@ contract Dog {
         require(dart <= 2**255 && dink <= 2**255, "Dog/overflow");
 
         vat.grab(
-            ilk, urn, milk.clip, address(vow), -int256(dink), -int256(dart)
+            ilk, urn, milk.clip, milk.clip, -int256(dink), -int256(dart)
         );
-
-        uint256 due = dart * rate;
-        vow.fess(due);
 
         {   // Avoid stack too deep
             // This calcuation will overflow if dart*rate exceeds ~10^14
-            uint256 tab = due * milk.chop / WAD;
+            uint256 tab = (dart * rate) * milk.chop / WAD;
             Dirt = Dirt + tab;
             ilks[ilk].dirt = milk.dirt + tab;
 
-            id = ClipperLike(milk.clip).kick({
-                tab: tab,
-                lot: dink,
-                usr: urn,
-                kpr: kpr
-            });
+            unchecked {
+                id = ClipperLike(milk.clip).kick({
+                    sin: dart * rate,
+                    tab: tab,
+                    lot: dink,
+                    usr: urn,
+                    kpr: kpr
+                });
+            }
         }
 
-        emit Bark(ilk, urn, dink, dart, due, milk.clip, id);
+        unchecked {
+            emit Bark(ilk, urn, dink, dart, dart * rate, milk.clip, id);
+        }
     }
 
     function digs(bytes32 ilk, uint256 rad) external auth {
         Dirt = Dirt - rad;
         ilks[ilk].dirt = ilks[ilk].dirt - rad;
         emit Digs(ilk, rad);
+    }
+
+    function flog(uint256 rad) external auth {
+        vat.suck(address(vow), msg.sender, rad);
+        emit Flog(msg.sender, rad);
     }
 
     function cage() external auth {
