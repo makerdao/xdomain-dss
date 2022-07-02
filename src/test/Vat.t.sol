@@ -172,4 +172,33 @@ contract VatTest is DSSTest {
         assertEq(vat.can(address(this), TEST_ADDRESS), 0);
     }
 
+    function testSlipPositive() public {
+        assertEq(vat.gem(ILK, TEST_ADDRESS), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Slip(ILK, TEST_ADDRESS, int256(100 * WAD));
+        vat.slip(ILK, TEST_ADDRESS, int256(100 * WAD));
+
+        assertEq(vat.gem(ILK, TEST_ADDRESS), 100 * WAD);
+    }
+
+    function testSlipNegative() public {
+        vat.slip(ILK, TEST_ADDRESS, int256(100 * WAD));
+        
+        assertEq(vat.gem(ILK, TEST_ADDRESS), 100 * WAD);
+
+        vm.expectEmit(true, true, true, true);
+        emit Slip(ILK, TEST_ADDRESS, -int256(50 * WAD));
+        vat.slip(ILK, TEST_ADDRESS, -int256(50 * WAD));
+
+        assertEq(vat.gem(ILK, TEST_ADDRESS), 50 * WAD);
+    }
+
+    function testSlipNegativeUnderflow() public {
+        assertEq(vat.gem(ILK, TEST_ADDRESS), 0);
+
+        vm.expectRevert(stdError.arithmeticError);
+        vat.slip(ILK, TEST_ADDRESS, -int256(50 * WAD));
+    }
+
 }
