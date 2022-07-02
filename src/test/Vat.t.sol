@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.13;
 
-import "ds-test/test.sol";
+import "dss-test/DSSTest.sol";
 
 import {Vat} from '../Vat.sol';
 import {Jug} from '../Jug.sol';
@@ -72,7 +72,7 @@ contract Usr {
 }
 
 
-contract FrobTest is DSTest {
+contract FrobTest is DSSTest {
     TestVat   vat;
     MockToken gold;
     Jug       jug;
@@ -90,7 +90,7 @@ contract FrobTest is DSTest {
         return wad * 10 ** 9;
     }
 
-    function setUp() public {
+    function postSetup() internal virtual override {
         vat = new TestVat();
 
         gold = new MockToken("GEM");

@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.13;
 
-import "ds-test/test.sol";
+import "dss-test/DSSTest.sol";
+
 import {Vat} from '../Vat.sol';
 import {Pot} from '../Pot.sol';
 
@@ -10,7 +11,7 @@ interface Hevm {
     function warp(uint256) external;
 }
 
-contract DSRTest is DSTest {
+contract DSRTest is DSSTest {
     Hevm hevm;
 
     Vat vat;
@@ -27,7 +28,7 @@ contract DSRTest is DSTest {
         return rad_ / 10 ** 27;
     }
 
-    function setUp() public {
+    function postSetup() internal virtual override {
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
         hevm.warp(604411200);
 

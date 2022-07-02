@@ -19,298 +19,603 @@
 
 pragma solidity ^0.8.13;
 
-import "ds-test/test.sol";
+import "dss-test/DSSTest.sol";
 
-import "../Dai.sol";
+import { Dai } from "../Dai.sol";
 
-contract TokenUser {
-    Dai  token;
-
-    constructor(Dai token_) {
-        token = token_;
-    }
-
-    function doTransferFrom(address from, address to, uint amount)
-        public
-        returns (bool)
-    {
-        return token.transferFrom(from, to, amount);
-    }
-
-    function doTransfer(address to, uint amount)
-        public
-        returns (bool)
-    {
-        return token.transfer(to, amount);
-    }
-
-    function doApprove(address recipient, uint amount)
-        public
-        returns (bool)
-    {
-        return token.approve(recipient, amount);
-    }
-
-    function doAllowance(address owner, address spender)
-        public
-        view
-        returns (uint)
-    {
-        return token.allowance(owner, spender);
-    }
-
-    function doBalanceOf(address who) public view returns (uint) {
-        return token.balanceOf(who);
-    }
-
-    function doApprove(address guy)
-        public
-        returns (bool)
-    {
-        return token.approve(guy, type(uint256).max);
-    }
-    function doMint(uint wad) public {
-        token.mint(address(this), wad);
-    }
-    function doBurn(uint wad) public {
-        token.burn(address(this), wad);
-    }
-    function doMint(address guy, uint wad) public {
-        token.mint(guy, wad);
-    }
-    function doBurn(address guy, uint wad) public {
-        token.burn(guy, wad);
-    }
-
-}
-
-interface Hevm {
-    function warp(uint256) external;
-}
-
-contract DaiTest is DSTest {
-    uint constant initialBalanceThis = 1000;
-    uint constant initialBalanceCal = 100;
+contract DaiTest is DSSTest {
 
     Dai token;
-    Hevm hevm;
-    address user1;
-    address user2;
-    address self;
 
-    uint amount = 2;
-    uint fee = 1;
-    uint nonce = 0;
-    uint deadline = 0;
-    address cal = 0x29C76e6aD8f28BB1004902578Fb108c507Be341b;
-    address del = 0xdd2d5D3f7f1b35b7A0601D6A00DbB7D44Af58479;
-    bytes32 r = 0x3e8ffe622889f0560938c883bf1497b90d4c2fc73631cd5c50b9e7bfe1fbb2fc;
-    bytes32 s = 0x5b98e77b91f13c52fe540b945d11d9a96441133726082d4b6b1753341a3e52ff;
-    uint8 v = 28;
-    bytes32 _r = 0x85da10f8af2cf512620c07d800f8e17a2a4cd2e91bf0835a34bf470abc6b66e5;
-    bytes32 _s = 0x7e8e641e5e8bef932c3a55e7365e0201196fc6385d942c47d749bf76e73ee46f;
-    uint8 _v = 27;
+    event Transfer(address indexed from, address indexed to, uint256 amount);
+    event Approval(address indexed owner, address indexed spender, uint256 amount);
 
+    bytes32 constant PERMIT_TYPEHASH =
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
-    function setUp() public {
-        hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-        hevm.warp(604411200);
-        token = createToken();
-        token.mint(address(this), initialBalanceThis);
-        token.mint(cal, initialBalanceCal);
-        user1 = address(new TokenUser(token));
-        user2 = address(new TokenUser(token));
-        self = address(this);
+    function postSetup() internal virtual override {
+        token = new Dai();
     }
 
-    function createToken() internal returns (Dai) {
-        return new Dai();
+    function testRelyDeny() public {
+        checkAuth(address(token), "Dai");
     }
 
-    function testSetupPrecondition() public {
-        assertEq(token.balanceOf(self), initialBalanceThis);
+    function invariantMetadata() public {
+        assertEq(token.name(), "Dai Stablecoin");
+        assertEq(token.symbol(), "DAI");
+        assertEq(token.version(), "2");
+        assertEq(token.decimals(), 18);
     }
 
-    function testTransferCost() public logs_gas {
-        token.transfer(address(123), 10);
+    function testMint() public {
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(0), address(0xBEEF), 1e18);
+        token.mint(address(0xBEEF), 1e18);
+
+        assertEq(token.totalSupply(), 1e18);
+        assertEq(token.balanceOf(address(0xBEEF)), 1e18);
     }
 
-    function testAllowanceStartsAtZero() public logs_gas {
-        assertEq(token.allowance(user1, user2), 0);
-    }
-
-    function testValidTransfers() public logs_gas {
-        uint sentAmount = 250;
-        emit log_named_address("token11111", address(token));
-        token.transfer(user2, sentAmount);
-        assertEq(token.balanceOf(user2), sentAmount);
-        assertEq(token.balanceOf(self), initialBalanceThis - sentAmount);
-    }
-
-    function testFailWrongAccountTransfers() public logs_gas {
-        uint sentAmount = 250;
-        token.transferFrom(user2, self, sentAmount);
-    }
-
-    function testFailInsufficientFundsTransfers() public logs_gas {
-        uint sentAmount = 250;
-        token.transfer(user1, initialBalanceThis - sentAmount);
-        token.transfer(user2, sentAmount + 1);
-    }
-
-    function testApproveSetsAllowance() public logs_gas {
-        emit log_named_address("Test", self);
-        emit log_named_address("Token", address(token));
-        emit log_named_address("Me", self);
-        emit log_named_address("User 2", user2);
-        token.approve(user2, 25);
-        assertEq(token.allowance(self, user2), 25);
-    }
-
-    function testChargesAmountApproved() public logs_gas {
-        uint amountApproved = 20;
-        token.approve(user2, amountApproved);
-        assertTrue(TokenUser(user2).doTransferFrom(self, user2, amountApproved));
-        assertEq(token.balanceOf(self), initialBalanceThis - amountApproved);
-    }
-
-    function testFailTransferWithoutApproval() public logs_gas {
-        token.transfer(user1, 50);
-        token.transferFrom(user1, self, 1);
-    }
-
-    function testFailChargeMoreThanApproved() public logs_gas {
-        token.transfer(user1, 50);
-        TokenUser(user1).doApprove(self, 20);
-        token.transferFrom(user1, self, 21);
-    }
-    function testTransferFromSelf() public {
-        token.transferFrom(self, user1, 50);
-        assertEq(token.balanceOf(user1), 50);
-    }
-    function testFailTransferFromSelfNonArbitrarySize() public {
-        // you shouldn't be able to evade balance checks by transferring
-        // to yourself
-        token.transferFrom(self, self, token.balanceOf(self) + 1);
-    }
-    function testMintself() public {
-        uint mintAmount = 10;
-        token.mint(address(this), mintAmount);
-        assertEq(token.balanceOf(self), initialBalanceThis + mintAmount);
-    }
-    function testMintGuy() public {
-        uint mintAmount = 10;
-        token.mint(user1, mintAmount);
-        assertEq(token.balanceOf(user1), mintAmount);
-    }
-    function testFailMintGuyNoAuth() public {
-        TokenUser(user1).doMint(user2, 10);
-    }
-    function testMintGuyAuth() public {
-        token.rely(user1);
-        TokenUser(user1).doMint(user2, 10);
+    function testMintBadAddress() public {
+        vm.expectRevert("Dai/invalid-address");
+        token.mint(address(0), 1e18);
+        vm.expectRevert("Dai/invalid-address");
+        token.mint(address(token), 1e18);
     }
 
     function testBurn() public {
-        uint burnAmount = 10;
-        token.burn(address(this), burnAmount);
-        assertEq(token.totalSupply(), initialBalanceThis + initialBalanceCal - burnAmount);
-    }
-    function testBurnself() public {
-        uint burnAmount = 10;
-        token.burn(address(this), burnAmount);
-        assertEq(token.balanceOf(self), initialBalanceThis - burnAmount);
-    }
-    function testBurnGuyWithTrust() public {
-        uint burnAmount = 10;
-        token.transfer(user1, burnAmount);
-        assertEq(token.balanceOf(user1), burnAmount);
+        token.mint(address(0xBEEF), 1e18);
 
-        TokenUser(user1).doApprove(self);
-        token.burn(user1, burnAmount);
-        assertEq(token.balanceOf(user1), 0);
-    }
-    function testBurnAuth() public {
-        token.transfer(user1, 10);
-        token.rely(user1);
-        TokenUser(user1).doBurn(10);
-    }
-    function testBurnGuyAuth() public {
-        token.transfer(user2, 10);
-        //        token.rely(user1);
-        TokenUser(user2).doApprove(user1);
-        TokenUser(user1).doBurn(user2, 10);
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(0xBEEF), address(0), 0.9e18);
+        token.burn(address(0xBEEF), 0.9e18);
+
+        assertEq(token.totalSupply(), 1e18 - 0.9e18);
+        assertEq(token.balanceOf(address(0xBEEF)), 0.1e18);
     }
 
-    function testFailUntrustedTransferFrom() public {
-        assertEq(token.allowance(self, user2), 0);
-        TokenUser(user1).doTransferFrom(self, user2, 200);
-    }
-    function testTrusting() public {
-        assertEq(token.allowance(self, user2), 0);
-        token.approve(user2, type(uint256).max);
-        assertEq(token.allowance(self, user2), type(uint256).max);
-        token.approve(user2, 0);
-        assertEq(token.allowance(self, user2), 0);
-    }
-    function testTrustedTransferFrom() public {
-        token.approve(user1, type(uint256).max);
-        TokenUser(user1).doTransferFrom(self, user2, 200);
-        assertEq(token.balanceOf(user2), 200);
-    }
-    function testApproveWillModifyAllowance() public {
-        assertEq(token.allowance(self, user1), 0);
-        assertEq(token.balanceOf(user1), 0);
-        token.approve(user1, 1000);
-        assertEq(token.allowance(self, user1), 1000);
-        TokenUser(user1).doTransferFrom(self, user1, 500);
-        assertEq(token.balanceOf(user1), 500);
-        assertEq(token.allowance(self, user1), 500);
-    }
-    function testApproveWillNotModifyAllowance() public {
-        assertEq(token.allowance(self, user1), 0);
-        assertEq(token.balanceOf(user1), 0);
-        token.approve(user1, type(uint256).max);
-        assertEq(token.allowance(self, user1), type(uint256).max);
-        TokenUser(user1).doTransferFrom(self, user1, 1000);
-        assertEq(token.balanceOf(user1), 1000);
-        assertEq(token.allowance(self, user1), type(uint256).max);
-    }
-    function testDaiAddress() public {
-        //The dai address generated by hevm
-        //used for signature generation testing
-        assertEq(address(token), address(0x11Ee1eeF5D446D07Cf26941C7F2B4B1Dfb9D030B));
+    function testApprove() public {
+        vm.expectEmit(true, true, true, true);
+        emit Approval(address(this), address(0xBEEF), 1e18);
+        assertTrue(token.approve(address(0xBEEF), 1e18));
+
+        assertEq(token.allowance(address(this), address(0xBEEF)), 1e18);
     }
 
-    function testTypehash() public {
-        assertEq(token.PERMIT_TYPEHASH(), 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9);
+    function testIncreaseAllowance() public {
+        vm.expectEmit(true, true, true, true);
+        emit Approval(address(this), address(0xBEEF), 1e18);
+        assertTrue(token.increaseAllowance(address(0xBEEF), 1e18));
+
+        assertEq(token.allowance(address(this), address(0xBEEF)), 1e18);
     }
 
-    function testDomain_Separator() public {
-        assertEq(token.DOMAIN_SEPARATOR(), 0x335904513b49c42fe9ec0b7754a1a6afce677bc1d79347da745a4e69268e208d);
+    function testDecreaseAllowance() public {
+        assertTrue(token.increaseAllowance(address(0xBEEF), 3e18));
+        vm.expectEmit(true, true, true, true);
+        emit Approval(address(this), address(0xBEEF), 2e18);
+        assertTrue(token.decreaseAllowance(address(0xBEEF), 1e18));
+
+        assertEq(token.allowance(address(this), address(0xBEEF)), 2e18);
     }
 
-    function testFailPermitAddress0() public {
-        v = 0;
-        // Apart from failing due the address(0) it also fails as the signature is not made for address(0) but cal
-        token.permit(address(0), del, 1000, 0, v, r, s);
+    function testDecreaseAllowanceInsufficientBalance() public {
+        assertTrue(token.increaseAllowance(address(0xBEEF), 1e18));
+        vm.expectRevert("Dai/insufficient-allowance");
+        token.decreaseAllowance(address(0xBEEF), 2e18);
+    }
+
+    function testTransfer() public {
+        token.mint(address(this), 1e18);
+
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(this), address(0xBEEF), 1e18);
+        assertTrue(token.transfer(address(0xBEEF), 1e18));
+        assertEq(token.totalSupply(), 1e18);
+
+        assertEq(token.balanceOf(address(this)), 0);
+        assertEq(token.balanceOf(address(0xBEEF)), 1e18);
+    }
+
+    function testTransferBadAddress() public {
+        token.mint(address(this), 1e18);
+
+        vm.expectRevert("Dai/invalid-address");
+        token.transfer(address(0), 1e18);
+        vm.expectRevert("Dai/invalid-address");
+        token.transfer(address(token), 1e18);
+    }
+
+    function testTransferFrom() public {
+        address from = address(0xABCD);
+
+        token.mint(from, 1e18);
+
+        vm.prank(from);
+        token.approve(address(this), 1e18);
+
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(from, address(0xBEEF), 1e18);
+        assertTrue(token.transferFrom(from, address(0xBEEF), 1e18));
+        assertEq(token.totalSupply(), 1e18);
+
+        assertEq(token.allowance(from, address(this)), 0);
+
+        assertEq(token.balanceOf(from), 0);
+        assertEq(token.balanceOf(address(0xBEEF)), 1e18);
+    }
+
+    function testTransferFromBadAddress() public {
+        token.mint(address(this), 1e18);
+        
+        vm.expectRevert("Dai/invalid-address");
+        token.transferFrom(address(this), address(0), 1e18);
+        vm.expectRevert("Dai/invalid-address");
+        token.transferFrom(address(this), address(token), 1e18);
+    }
+
+    function testInfiniteApproveTransferFrom() public {
+        address from = address(0xABCD);
+
+        token.mint(from, 1e18);
+
+        vm.prank(from);
+        vm.expectEmit(true, true, true, true);
+        emit Approval(from, address(this), type(uint256).max);
+        token.approve(address(this), type(uint256).max);
+
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(from, address(0xBEEF), 1e18);
+        assertTrue(token.transferFrom(from, address(0xBEEF), 1e18));
+        assertEq(token.totalSupply(), 1e18);
+
+        assertEq(token.allowance(from, address(this)), type(uint256).max);
+
+        assertEq(token.balanceOf(from), 0);
+        assertEq(token.balanceOf(address(0xBEEF)), 1e18);
     }
 
     function testPermit() public {
-        assertEq(block.timestamp, 604411200);
-        token.permit(cal, del, 1000, 604411200 + 1 hours, v, r, s);
-        assertEq(token.allowance(cal, del), 1000);
-        assertEq(token.nonces(cal), 1);
+        uint256 privateKey = 0xBEEF;
+        address owner = vm.addr(privateKey);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            privateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token.DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, address(0xCAFE), 1e18, 0, block.timestamp))
+                )
+            )
+        );
+
+        vm.expectEmit(true, true, true, true);
+        emit Approval(owner, address(0xCAFE), 1e18);
+        token.permit(owner, address(0xCAFE), 1e18, block.timestamp, v, r, s);
+
+        assertEq(token.allowance(owner, address(0xCAFE)), 1e18);
+        assertEq(token.nonces(owner), 1);
     }
 
-    function testFailPermitWithExpiry() public {
-        hevm.warp(block.timestamp + 2 hours);
-        assertEq(block.timestamp, 604411200 + 2 hours);
-        token.permit(cal, del, 1000, 604411200 + 1 hours, v, r, s);
+    function testTransferInsufficientBalance() public {
+        token.mint(address(this), 0.9e18);
+        vm.expectRevert("Dai/insufficient-balance");
+        token.transfer(address(0xBEEF), 1e18);
     }
 
-    function testFailReplay() public {
-        token.permit(cal, del, 1000, 604411200 + 1 hours, v, r, s);
-        token.permit(cal, del, 1000, 604411200 + 1 hours, v, r, s);
+    function testTransferFromInsufficientAllowance() public {
+        address from = address(0xABCD);
+
+        token.mint(from, 1e18);
+
+        vm.prank(from);
+        token.approve(address(this), 0.9e18);
+
+        vm.expectRevert("Dai/insufficient-allowance");
+        token.transferFrom(from, address(0xBEEF), 1e18);
+    }
+
+    function testTransferFromInsufficientBalance() public {
+        address from = address(0xABCD);
+
+        token.mint(from, 0.9e18);
+
+        vm.prank(from);
+        token.approve(address(this), 1e18);
+
+        vm.expectRevert("Dai/insufficient-balance");
+        token.transferFrom(from, address(0xBEEF), 1e18);
+    }
+
+    function testPermitBadNonce() public {
+        uint256 privateKey = 0xBEEF;
+        address owner = vm.addr(privateKey);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            privateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token.DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, address(0xCAFE), 1e18, 1, block.timestamp))
+                )
+            )
+        );
+
+        vm.expectRevert("Dai/invalid-permit");
+        token.permit(owner, address(0xCAFE), 1e18, block.timestamp, v, r, s);
+    }
+
+    function testPermitBadDeadline() public {
+        uint256 privateKey = 0xBEEF;
+        address owner = vm.addr(privateKey);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            privateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token.DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, address(0xCAFE), 1e18, 0, block.timestamp))
+                )
+            )
+        );
+
+        vm.expectRevert("Dai/invalid-permit");
+        token.permit(owner, address(0xCAFE), 1e18, block.timestamp + 1, v, r, s);
+    }
+
+    function testPermitPastDeadline() public {
+        uint256 privateKey = 0xBEEF;
+        address owner = vm.addr(privateKey);
+        uint256 deadline = block.timestamp == 0 ? 0 : block.timestamp - 1;
+
+        bytes32 domain_separator = token.DOMAIN_SEPARATOR();
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            privateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    domain_separator,
+                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, address(0xCAFE), 1e18, 0, deadline))
+                )
+            )
+        );
+
+        vm.warp(deadline + 1);
+
+        vm.expectRevert("Dai/permit-expired");
+        token.permit(owner, address(0xCAFE), 1e18, deadline, v, r, s);
+    }
+
+    function testPermitReplay() public {
+        uint256 privateKey = 0xBEEF;
+        address owner = vm.addr(privateKey);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            privateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token.DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, address(0xCAFE), 1e18, 0, block.timestamp))
+                )
+            )
+        );
+
+        token.permit(owner, address(0xCAFE), 1e18, block.timestamp, v, r, s);
+        vm.expectRevert("Dai/invalid-permit");
+        token.permit(owner, address(0xCAFE), 1e18, block.timestamp, v, r, s);
+    }
+
+    function testMint(address to, uint256 amount) public {
+        if (to != address(0) && to != address(token)) {
+            vm.expectEmit(true, true, true, true);
+            emit Transfer(address(0), to, amount);
+        } else {
+            vm.expectRevert("Dai/invalid-address");
+        }
+        token.mint(to, amount);
+
+        if (to != address(0) && to != address(token)) {
+            assertEq(token.totalSupply(), amount);
+            assertEq(token.balanceOf(to), amount);
+        }
+    }
+
+    function testBurn(
+        address from,
+        uint256 mintAmount,
+        uint256 burnAmount
+    ) public {
+        if (from == address(0) || from == address(token)) return;
+
+        burnAmount = bound(burnAmount, 0, mintAmount);
+
+        token.mint(from, mintAmount);
+
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(from, address(0), burnAmount);
+        token.burn(from, burnAmount);
+
+        assertEq(token.totalSupply(), mintAmount - burnAmount);
+        assertEq(token.balanceOf(from), mintAmount - burnAmount);
+    }
+
+    function testApprove(address to, uint256 amount) public {
+        vm.expectEmit(true, true, true, true);
+        emit Approval(address(this), to, amount);
+        assertTrue(token.approve(to, amount));
+
+        assertEq(token.allowance(address(this), to), amount);
+    }
+
+    function testTransfer(address to, uint256 amount) public {
+        if (to == address(0) || to == address(token)) return;
+
+        token.mint(address(this), amount);
+
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(this), to, amount);
+        assertTrue(token.transfer(to, amount));
+        assertEq(token.totalSupply(), amount);
+
+        if (address(this) == to) {
+            assertEq(token.balanceOf(address(this)), amount);
+        } else {
+            assertEq(token.balanceOf(address(this)), 0);
+            assertEq(token.balanceOf(to), amount);
+        }
+    }
+
+    function testTransferFrom(
+        address to,
+        uint256 approval,
+        uint256 amount
+    ) public {
+        if (to == address(0) || to == address(token)) return;
+
+        amount = bound(amount, 0, approval);
+
+        address from = address(0xABCD);
+
+        token.mint(from, amount);
+
+        vm.prank(from);
+        token.approve(address(this), approval);
+
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(from, to, amount);
+        assertTrue(token.transferFrom(from, to, amount));
+        assertEq(token.totalSupply(), amount);
+
+        uint256 app = from == address(this) || approval == type(uint256).max ? approval : approval - amount;
+        assertEq(token.allowance(from, address(this)), app);
+
+        if (from == to) {
+            assertEq(token.balanceOf(from), amount);
+        } else  {
+            assertEq(token.balanceOf(from), 0);
+            assertEq(token.balanceOf(to), amount);
+        }
+    }
+
+    function testPermit(
+        uint248 privKey,
+        address to,
+        uint256 amount,
+        uint256 deadline
+    ) public {
+        uint256 privateKey = privKey;
+        if (deadline < block.timestamp) deadline = block.timestamp;
+        if (privateKey == 0) privateKey = 1;
+
+        address owner = vm.addr(privateKey);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            privateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token.DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, to, amount, 0, deadline))
+                )
+            )
+        );
+
+        vm.expectEmit(true, true, true, true);
+        emit Approval(owner, to, amount);
+        token.permit(owner, to, amount, deadline, v, r, s);
+
+        assertEq(token.allowance(owner, to), amount);
+        assertEq(token.nonces(owner), 1);
+    }
+
+    function testBurnInsufficientBalance(
+        address to,
+        uint256 mintAmount,
+        uint256 burnAmount
+    ) public {
+        if (to == address(0) || to == address(token)) return;
+
+        if (mintAmount == type(uint256).max) mintAmount -= 1;
+        burnAmount = bound(burnAmount, mintAmount + 1, type(uint256).max);
+
+        token.mint(to, mintAmount);
+        vm.expectRevert("Dai/insufficient-balance");
+        token.burn(to, burnAmount);
+    }
+
+    function testTransferInsufficientBalance(
+        address to,
+        uint256 mintAmount,
+        uint256 sendAmount
+    ) public {
+        if (to == address(0) || to == address(token)) return;
+
+        if (mintAmount == type(uint256).max) mintAmount -= 1;
+        sendAmount = bound(sendAmount, mintAmount + 1, type(uint256).max);
+
+        token.mint(address(this), mintAmount);
+        vm.expectRevert("Dai/insufficient-balance");
+        token.transfer(to, sendAmount);
+    }
+
+    function testTransferFromInsufficientAllowance(
+        address to,
+        uint256 approval,
+        uint256 amount
+    ) public {
+        if (to == address(0) || to == address(token)) return;
+
+        if (approval == type(uint256).max) approval -= 1;
+        amount = bound(amount, approval + 1, type(uint256).max);
+
+        address from = address(0xABCD);
+
+        token.mint(from, amount);
+
+        vm.prank(from);
+        token.approve(address(this), approval);
+
+        vm.expectRevert("Dai/insufficient-allowance");
+        token.transferFrom(from, to, amount);
+    }
+
+    function testTransferFromInsufficientBalance(
+        address to,
+        uint256 mintAmount,
+        uint256 sendAmount
+    ) public {
+        if (to == address(0) || to == address(token)) return;
+
+        if (mintAmount == type(uint256).max) mintAmount -= 1;
+        sendAmount = bound(sendAmount, mintAmount + 1, type(uint256).max);
+
+        address from = address(0xABCD);
+
+        token.mint(from, mintAmount);
+
+        vm.prank(from);
+        token.approve(address(this), sendAmount);
+
+        vm.expectRevert("Dai/insufficient-balance");
+        token.transferFrom(from, to, sendAmount);
+    }
+
+    function testPermitBadNonce(
+        uint128 privateKey,
+        address to,
+        uint256 amount,
+        uint256 deadline,
+        uint256 nonce
+    ) public {
+        if (deadline < block.timestamp) deadline = block.timestamp;
+        if (privateKey == 0) privateKey = 1;
+        if (nonce == 0) nonce = 1;
+
+        address owner = vm.addr(privateKey);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            privateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token.DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, to, amount, nonce, deadline))
+                )
+            )
+        );
+
+        vm.expectRevert("Dai/invalid-permit");
+        token.permit(owner, to, amount, deadline, v, r, s);
+    }
+
+    function testPermitBadDeadline(
+        uint128 privateKey,
+        address to,
+        uint256 amount,
+        uint256 deadline
+    ) public {
+        if (deadline == type(uint256).max) deadline -= 1;
+        if (deadline < block.timestamp) deadline = block.timestamp;
+        if (privateKey == 0) privateKey = 1;
+
+        address owner = vm.addr(privateKey);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            privateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token.DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, to, amount, 0, deadline))
+                )
+            )
+        );
+
+        vm.expectRevert("Dai/invalid-permit");
+        token.permit(owner, to, amount, deadline + 1, v, r, s);
+    }
+
+    function testPermitPastDeadline(
+        uint128 privateKey,
+        address to,
+        uint256 amount,
+        uint256 deadline
+    ) public {
+        if (deadline == type(uint256).max) deadline -= 1;
+        vm.warp(deadline);
+
+        // private key cannot be 0 for secp256k1 pubkey generation
+        if (privateKey == 0) privateKey = 1;
+
+        address owner = vm.addr(privateKey);
+
+        bytes32 domain_separator = token.DOMAIN_SEPARATOR();
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            privateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    domain_separator,
+                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, to, amount, 0, deadline))
+                )
+            )
+        );
+
+        vm.warp(deadline + 1);
+
+        vm.expectRevert("Dai/permit-expired");
+        token.permit(owner, to, amount, deadline, v, r, s);
+    }
+
+    function testPermitReplay(
+        uint128 privateKey,
+        address to,
+        uint256 amount,
+        uint256 deadline
+    ) public {
+        if (deadline < block.timestamp) deadline = block.timestamp;
+        if (privateKey == 0) privateKey = 1;
+
+        address owner = vm.addr(privateKey);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            privateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token.DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, to, amount, 0, deadline))
+                )
+            )
+        );
+
+        token.permit(owner, to, amount, deadline, v, r, s);
+        vm.expectRevert("Dai/invalid-permit");
+        token.permit(owner, to, amount, deadline, v, r, s);
     }
 }

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.13;
 
-import "ds-test/test.sol";
+import "dss-test/DSSTest.sol";
 
 import {Jug} from "../Jug.sol";
 import {Vat} from "../Vat.sol";
@@ -31,7 +31,7 @@ contract Rpow is Jug {
 }
 
 
-contract JugTest is DSTest {
+contract JugTest is DSSTest {
     Hevm hevm;
     Jug jug;
     Vat  vat;
@@ -58,7 +58,7 @@ contract JugTest is DSTest {
 
     address ali = address(bytes20("ali"));
 
-    function setUp() public {
+    function postSetup() internal virtual override {
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
         hevm.warp(604411200);
 
