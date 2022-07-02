@@ -58,6 +58,10 @@ contract VatTest is DSSTest {
         vat = new Vat();
     }
 
+    function testConstructor() public {
+        assertEq(vat.wards(address(this)), 1);
+    }
+
     function testAuth() public {
         checkAuth(address(vat), "Vat");
     }
@@ -84,6 +88,39 @@ contract VatTest is DSSTest {
         vat.deny(address(this));
         vm.expectRevert("Vat/not-authorized");
         vat.file(ILK, "spot", 1);
+    }
+
+    function testAuthModifier() public {
+        vat.deny(address(this));
+
+        bytes[] memory funcs = new bytes[](6);
+        funcs[0] = abi.encodeWithSelector(Vat.init.selector, ILK);
+        funcs[1] = abi.encodeWithSelector(Vat.cage.selector);
+        funcs[2] = abi.encodeWithSelector(Vat.slip.selector, ILK, address(0), 0);
+        funcs[3] = abi.encodeWithSelector(Vat.grab.selector, ILK, address(0), address(0), address(0), 0, 0);
+        funcs[4] = abi.encodeWithSelector(Vat.suck.selector, address(0), address(0), 0);
+        funcs[5] = abi.encodeWithSelector(Vat.fold.selector, ILK, address(0), 0);
+
+
+        for (uint256 i = 0; i < funcs.length; i++) {
+            assertRevert(address(vat), funcs[i], "Vat/not-authorized");
+        }
+    }
+
+    function testLive() public {
+        vat.cage();
+
+        bytes[] memory funcs = new bytes[](6);
+        funcs[0] = abi.encodeWithSelector(Vat.rely.selector, address(0));
+        funcs[1] = abi.encodeWithSelector(Vat.deny.selector, address(0));
+        funcs[2] = abi.encodeWithSignature("file(bytes32,uint256)", bytes32("Line"), 0);
+        funcs[3] = abi.encodeWithSignature("file(bytes32,bytes32,uint256)", ILK, bytes32("Line"), 0);
+        funcs[4] = abi.encodeWithSelector(Vat.frob.selector, ILK, address(0), address(0), address(0), 0, 0);
+        funcs[5] = abi.encodeWithSelector(Vat.fold.selector, ILK, address(0), 0);
+
+        for (uint256 i = 0; i < funcs.length; i++) {
+            assertRevert(address(vat), funcs[i], "Vat/not-live");
+        }
     }
 
 }
