@@ -454,7 +454,9 @@ contract VatTest is DSSTest {
         assertEq(usr1.gems(ILK), 0);
         assertEq(usr2.gems(ILK), 100 * WAD);
 
-        usr2.frob(ILK, ausr1, ausr2, ausr2, int256(100 * WAD), 0);
+        vm.expectEmit(true, true, true, true);
+        emit Frob(ILK, ausr1, ausr2, TEST_ADDRESS, int256(100 * WAD), 0);
+        usr2.frob(ILK, ausr1, ausr2, TEST_ADDRESS, int256(100 * WAD), 0);
 
         assertEq(usr1.dai(), 100 * RAD);
         assertEq(usr1.ink(ILK), 200 * WAD);
@@ -473,7 +475,9 @@ contract VatTest is DSSTest {
         assertEq(usr1.gems(ILK), 0);
         assertEq(usr2.dai(), 100 * RAD);
 
-        usr2.frob(ILK, ausr1, ausr2, ausr2, 0, -int256(100 * WAD));
+        vm.expectEmit(true, true, true, true);
+        emit Frob(ILK, ausr1, TEST_ADDRESS, ausr2, 0, -int256(100 * WAD));
+        usr2.frob(ILK, ausr1, TEST_ADDRESS, ausr2, 0, -int256(100 * WAD));
 
         assertEq(usr1.dai(), 100 * RAD);
         assertEq(usr1.ink(ILK), 100 * WAD);
