@@ -34,6 +34,18 @@ contract User {
     function hope(address usr) public {
         vat.hope(usr);
     }
+    function dai() public view returns (uint256) {
+        return vat.dai(address(this));
+    }
+    function gems(bytes32 ilk) public view returns (uint256) {
+        return vat.gem(ilk, address(this));
+    }
+    function ink(bytes32 ilk) public view returns (uint256 _ink) {
+        (_ink,) = vat.urns(ilk, address(this));
+    }
+    function art(bytes32 ilk) public view returns (uint256 _art) {
+        (,_art) = vat.urns(ilk, address(this));
+    }
 
 }
 
@@ -69,6 +81,20 @@ contract VatTest is DSSTest {
         usr2 = new User(vat);
         ausr1 = address(usr1);
         ausr2 = address(usr2);
+    }
+
+    modifier setupCdpOps {
+        vat.init(ILK);
+        vat.file("Line", 1000 * RAD);
+        vat.file(ILK, "spot", RAY);     // Collateral price = $1 for simplicity
+        vat.file(ILK, "line", 1000 * RAD);
+        vat.file(ILK, "dust", 10 * RAD);
+
+        // Give some gems to the users
+        vat.slip(ILK, ausr1, int256(100 * WAD));
+        vat.slip(ILK, ausr2, int256(100 * WAD));
+
+        _;
     }
 
     function testConstructor() public {
@@ -316,6 +342,43 @@ contract VatTest is DSSTest {
     function testMoveUnderflow() public {
         vm.expectRevert(stdError.arithmeticError);
         usr1.move(ausr1, ausr2, 100 * RAD);
+    }
+
+    function testFrobNotInit() public {
+        vm.expectRevert("Vat/ilk-not-init");
+        usr1.frob(ILK, ausr1, ausr1, ausr1, 0, 0);
+    }
+
+    function testFrobMint() public setupCdpOps {
+        assertEq(usr1.dai(), 0);
+        assertEq(usr1.ink(ILK), 0);
+        assertEq(usr1.art(ILK), 0);
+        assertEq(usr1.gems(ILK), 100 * WAD);
+
+        vm.expectEmit(true, true, true, true);
+        emit Frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+
+        assertEq(usr1.dai(), 100 * RAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.gems(ILK), 0);
+    }
+
+    function testFrobRepay() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+
+        assertEq(usr1.dai(), 100 * RAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.gems(ILK), 0);
+
+        usr1.frob(ILK, ausr1, ausr1, ausr1, -int256(50 * WAD), -int256(50 * WAD));
+
+        assertEq(usr1.dai(), 50 * RAD);
+        assertEq(usr1.ink(ILK), 50 * WAD);
+        assertEq(usr1.art(ILK), 50 * WAD);
+        assertEq(usr1.gems(ILK), 50 * WAD);
     }
 
 }
