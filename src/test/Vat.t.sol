@@ -86,7 +86,7 @@ contract VatTest is DSSTest {
     modifier setupCdpOps {
         vat.init(ILK);
         vat.file("Line", 1000 * RAD);
-        vat.file(ILK, "spot", RAY);     // Collateral price = $1 for simplicity
+        vat.file(ILK, "spot", RAY);     // Collateral price = $1 and 100% CR for simplicity
         vat.file(ILK, "line", 1000 * RAD);
         vat.file(ILK, "dust", 10 * RAD);
 
@@ -393,6 +393,50 @@ contract VatTest is DSSTest {
 
         vm.expectRevert("Vat/ceiling-exceeded");
         usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+    }
+
+    function testFrobNotSafe() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+
+        assertEq(usr1.dai(), 100 * RAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.gems(ILK), 0);
+
+        // Cannot mint one more DAI it's undercollateralized
+        vm.expectRevert("Vat/not-safe");
+        usr1.frob(ILK, ausr1, ausr1, ausr1, 0, int256(1 * WAD));
+
+        // Cannot remove even one ink or it's undercollateralized
+        vm.expectRevert("Vat/not-safe");
+        usr1.frob(ILK, ausr1, ausr1, ausr1, -int256(1 * WAD), 0);
+    }
+
+    function testFrobNotSafeLessRisky() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(50 * WAD), int256(50 * WAD));
+
+        assertEq(usr1.dai(), 50 * RAD);
+        assertEq(usr1.ink(ILK), 50 * WAD);
+        assertEq(usr1.art(ILK), 50 * WAD);
+        assertEq(usr1.gems(ILK), 50 * WAD);
+
+        vat.file(ILK, "spot", RAY / 2);     // Vault is underwater
+
+        // Can repay debt even if it's undercollateralized
+        usr1.frob(ILK, ausr1, ausr1, ausr1, 0, -int256(1 * WAD));
+
+        assertEq(usr1.dai(), 49 * RAD);
+        assertEq(usr1.ink(ILK), 50 * WAD);
+        assertEq(usr1.art(ILK), 49 * WAD);
+        assertEq(usr1.gems(ILK), 50 * WAD);
+
+        // Can add gems even if it's undercollateralized
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(1 * WAD), 0);
+
+        assertEq(usr1.dai(), 49 * RAD);
+        assertEq(usr1.ink(ILK), 51 * WAD);
+        assertEq(usr1.art(ILK), 49 * WAD);
+        assertEq(usr1.gems(ILK), 49 * WAD);
     }
 
 }
