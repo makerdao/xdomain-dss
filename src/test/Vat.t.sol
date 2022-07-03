@@ -381,4 +381,18 @@ contract VatTest is DSSTest {
         assertEq(usr1.gems(ILK), 50 * WAD);
     }
 
+    function testFrobCannotExceedIlkCeiling() public setupCdpOps {
+        vat.file(ILK, "line", 10 * RAD);
+
+        vm.expectRevert("Vat/ceiling-exceeded");
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+    }
+
+    function testFrobCannotExceedGlobalCeiling() public setupCdpOps {
+        vat.file("Line", 10 * RAD);
+
+        vm.expectRevert("Vat/ceiling-exceeded");
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+    }
+
 }
