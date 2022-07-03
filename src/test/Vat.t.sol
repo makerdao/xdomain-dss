@@ -11,7 +11,7 @@ import {DaiJoin} from '../DaiJoin.sol';
 
 import {MockToken} from './mocks/Token.sol';
 
-contract Usr {
+contract User {
 
     Vat public vat;
 
@@ -19,6 +19,12 @@ contract Usr {
         vat = vat_;
     }
 
+    function flux(bytes32 ilk, address src, address dst, uint256 wad) public {
+        vat.flux(ilk, src, dst, wad);
+    }
+    function move(address src, address dst, uint256 rad) public {
+        vat.move(src, dst, rad);
+    }
     function frob(bytes32 ilk, address u, address v, address w, int256 dink, int256 dart) public {
         vat.frob(ilk, u, v, w, dink, dart);
     }
@@ -31,10 +37,13 @@ contract Usr {
 
 }
 
-
 contract VatTest is DSSTest {
 
     Vat vat;
+    User usr1;
+    User usr2;
+    address ausr1;
+    address ausr2;
 
     bytes32 constant ILK = "SOME-ILK-A";
 
@@ -56,6 +65,10 @@ contract VatTest is DSSTest {
 
     function postSetup() internal virtual override {
         vat = new Vat();
+        usr1 = new User(vat);
+        usr2 = new User(vat);
+        ausr1 = address(usr1);
+        ausr2 = address(usr2);
     }
 
     function testConstructor() public {
@@ -199,6 +212,53 @@ contract VatTest is DSSTest {
 
         vm.expectRevert(stdError.arithmeticError);
         vat.slip(ILK, TEST_ADDRESS, -int256(50 * WAD));
+    }
+
+    function testFluxSelfOther() public {
+        vat.slip(ILK, ausr1, int256(100 * WAD));
+
+        assertEq(vat.gem(ILK, ausr1), 100 * WAD);
+        assertEq(vat.gem(ILK, ausr2), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Flux(ILK, ausr1, ausr2, 100 * WAD);
+        usr1.flux(ILK, ausr1, ausr2, 100 * WAD);
+
+        assertEq(vat.gem(ILK, ausr1), 0);
+        assertEq(vat.gem(ILK, ausr2), 100 * WAD);
+    }
+
+    function testFluxOtherSelf() public {
+        vat.slip(ILK, ausr1, int256(100 * WAD));
+
+        assertEq(vat.gem(ILK, ausr1), 100 * WAD);
+        assertEq(vat.gem(ILK, ausr2), 0);
+
+        usr1.hope(ausr2);
+        usr2.flux(ILK, ausr1, ausr2, 100 * WAD);
+
+        assertEq(vat.gem(ILK, ausr1), 0);
+        assertEq(vat.gem(ILK, ausr2), 100 * WAD);
+    }
+
+    function testFluxOtherSelfNoPermission() public {
+        vat.slip(ILK, ausr1, int256(100 * WAD));
+
+        assertEq(vat.gem(ILK, ausr1), 100 * WAD);
+        assertEq(vat.gem(ILK, ausr2), 0);
+
+        vm.expectRevert("Vat/not-allowed");
+        usr2.flux(ILK, ausr1, ausr2, 100 * WAD);
+    }
+
+    function testFluxSelfSelf() public {
+        vat.slip(ILK, ausr1, int256(100 * WAD));
+
+        assertEq(vat.gem(ILK, ausr1), 100 * WAD);
+
+        usr1.flux(ILK, ausr1, ausr1, 100 * WAD);
+
+        assertEq(vat.gem(ILK, ausr1), 100 * WAD);
     }
 
 }
