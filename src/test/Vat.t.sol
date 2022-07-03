@@ -439,4 +439,41 @@ contract VatTest is DSSTest {
         assertEq(usr1.gems(ILK), 49 * WAD);
     }
 
+    function testFrobPermissionlessAddCollateral() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+
+        assertEq(usr1.dai(), 100 * RAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.gems(ILK), 0);
+        assertEq(usr2.gems(ILK), 100 * WAD);
+
+        usr2.frob(ILK, ausr1, ausr2, ausr2, int256(100 * WAD), 0);
+
+        assertEq(usr1.dai(), 100 * RAD);
+        assertEq(usr1.ink(ILK), 200 * WAD);
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.gems(ILK), 0);
+        assertEq(usr2.gems(ILK), 0);
+    }
+
+    function testFrobPermissionlessRepay() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+        vat.suck(TEST_ADDRESS, ausr2, 100 * RAD);
+
+        assertEq(usr1.dai(), 100 * RAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.gems(ILK), 0);
+        assertEq(usr2.dai(), 100 * RAD);
+
+        usr2.frob(ILK, ausr1, ausr2, ausr2, 0, -int256(100 * WAD));
+
+        assertEq(usr1.dai(), 100 * RAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(usr1.art(ILK), 0);
+        assertEq(usr1.gems(ILK), 0);
+        assertEq(usr2.dai(), 0);
+    }
+
 }
