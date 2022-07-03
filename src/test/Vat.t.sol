@@ -354,6 +354,7 @@ contract VatTest is DSSTest {
         assertEq(usr1.ink(ILK), 0);
         assertEq(usr1.art(ILK), 0);
         assertEq(usr1.gems(ILK), 100 * WAD);
+        assertEq(vat.Art(ILK), 0);
 
         vm.expectEmit(true, true, true, true);
         emit Frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
@@ -363,6 +364,7 @@ contract VatTest is DSSTest {
         assertEq(usr1.ink(ILK), 100 * WAD);
         assertEq(usr1.art(ILK), 100 * WAD);
         assertEq(usr1.gems(ILK), 0);
+        assertEq(vat.Art(ILK), 100 * WAD);
     }
 
     function testFrobRepay() public setupCdpOps {
@@ -372,13 +374,17 @@ contract VatTest is DSSTest {
         assertEq(usr1.ink(ILK), 100 * WAD);
         assertEq(usr1.art(ILK), 100 * WAD);
         assertEq(usr1.gems(ILK), 0);
+        assertEq(vat.Art(ILK), 100 * WAD);
 
+        vm.expectEmit(true, true, true, true);
+        emit Frob(ILK, ausr1, ausr1, ausr1, -int256(50 * WAD), -int256(50 * WAD));
         usr1.frob(ILK, ausr1, ausr1, ausr1, -int256(50 * WAD), -int256(50 * WAD));
 
         assertEq(usr1.dai(), 50 * RAD);
         assertEq(usr1.ink(ILK), 50 * WAD);
         assertEq(usr1.art(ILK), 50 * WAD);
         assertEq(usr1.gems(ILK), 50 * WAD);
+        assertEq(vat.Art(ILK), 50 * WAD);
     }
 
     function testFrobCannotExceedIlkCeiling() public setupCdpOps {
@@ -474,6 +480,13 @@ contract VatTest is DSSTest {
         assertEq(usr1.art(ILK), 0);
         assertEq(usr1.gems(ILK), 0);
         assertEq(usr2.dai(), 0);
+    }
+
+    function testFrobOther() public setupCdpOps {
+        // usr2 can completely manipulate usr1's vault with permission
+        usr1.hope(ausr2);
+        usr2.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+        usr2.frob(ILK, ausr1, ausr1, ausr1, -int256(50 * WAD), -int256(50 * WAD));
     }
 
 }
