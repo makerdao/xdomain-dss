@@ -261,4 +261,61 @@ contract VatTest is DSSTest {
         assertEq(vat.gem(ILK, ausr1), 100 * WAD);
     }
 
+    function testFluxUnderflow() public {
+        vm.expectRevert(stdError.arithmeticError);
+        usr1.flux(ILK, ausr1, ausr2, 100 * WAD);
+    }
+
+    function testMoveSelfOther() public {
+        vat.suck(TEST_ADDRESS, ausr1, 100 * RAD);
+
+        assertEq(vat.dai(ausr1), 100 * RAD);
+        assertEq(vat.dai(ausr2), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Move(ausr1, ausr2, 100 * RAD);
+        usr1.move(ausr1, ausr2, 100 * RAD);
+
+        assertEq(vat.dai(ausr1), 0);
+        assertEq(vat.dai(ausr2), 100 * RAD);
+    }
+
+    function testMoveOtherSelf() public {
+        vat.suck(TEST_ADDRESS, ausr1, 100 * RAD);
+
+        assertEq(vat.dai(ausr1), 100 * RAD);
+        assertEq(vat.dai(ausr2), 0);
+
+        usr1.hope(ausr2);
+        usr2.move(ausr1, ausr2, 100 * RAD);
+
+        assertEq(vat.dai(ausr1), 0);
+        assertEq(vat.dai(ausr2), 100 * RAD);
+    }
+
+    function testMoveOtherSelfNoPermission() public {
+        vat.suck(TEST_ADDRESS, ausr1, 100 * RAD);
+
+        assertEq(vat.dai(ausr1), 100 * RAD);
+        assertEq(vat.dai(ausr2), 0);
+
+        vm.expectRevert("Vat/not-allowed");
+        usr2.move(ausr1, ausr2, 100 * RAD);
+    }
+
+    function testMoveSelfSelf() public {
+        vat.suck(TEST_ADDRESS, ausr1, 100 * RAD);
+
+        assertEq(vat.dai(ausr1), 100 * RAD);
+
+        usr1.move(ausr1, ausr1, 100 * RAD);
+
+        assertEq(vat.dai(ausr1), 100 * RAD);
+    }
+
+    function testMoveUnderflow() public {
+        vm.expectRevert(stdError.arithmeticError);
+        usr1.move(ausr1, ausr2, 100 * RAD);
+    }
+
 }
