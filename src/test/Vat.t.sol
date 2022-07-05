@@ -486,6 +486,11 @@ contract VatTest is DSSTest {
         assertEq(usr2.dai(), 0);
     }
 
+    function testFrobDusty() public setupCdpOps {
+        vm.expectRevert("Vat/dust");
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(9 * WAD), int256(9 * WAD));
+    }
+
     function testFrobOther() public setupCdpOps {
         // usr2 can completely manipulate usr1's vault with permission
         usr1.hope(ausr2);
@@ -510,6 +515,137 @@ contract VatTest is DSSTest {
         assertEq(usr1.ink(ILK), 0);
         assertEq(usr2.art(ILK), 100 * WAD);
         assertEq(usr2.ink(ILK), 100 * WAD);
+    }
+
+    function testForkSelfOtherNegative() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+        usr2.frob(ILK, ausr2, ausr2, ausr2, int256(100 * WAD), int256(100 * WAD));
+        usr2.hope(ausr1);
+
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(usr2.art(ILK), 100 * WAD);
+        assertEq(usr2.ink(ILK), 100 * WAD);
+
+        vm.expectEmit(true, true, true, true);
+        emit Fork(ILK, ausr1, ausr2, -int256(100 * WAD), -int256(100 * WAD));
+        usr1.fork(ILK, ausr1, ausr2, -int256(100 * WAD), -int256(100 * WAD));
+
+        assertEq(usr1.art(ILK), 200 * WAD);
+        assertEq(usr1.ink(ILK), 200 * WAD);
+        assertEq(usr2.art(ILK), 0);
+        assertEq(usr2.ink(ILK), 0);
+    }
+
+    function testForkSelfOtherNoPermission() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+
+        vm.expectRevert("Vat/not-allowed");
+        usr1.fork(ILK, ausr1, ausr2, int256(100 * WAD), int256(100 * WAD));
+    }
+
+    function testForkOtherSelf() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+        usr1.hope(ausr2);
+
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(usr2.art(ILK), 0);
+        assertEq(usr2.ink(ILK), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Fork(ILK, ausr1, ausr2, int256(100 * WAD), int256(100 * WAD));
+        usr2.fork(ILK, ausr1, ausr2, int256(100 * WAD), int256(100 * WAD));
+
+        assertEq(usr1.art(ILK), 0);
+        assertEq(usr1.ink(ILK), 0);
+        assertEq(usr2.art(ILK), 100 * WAD);
+        assertEq(usr2.ink(ILK), 100 * WAD);
+    }
+
+    function testForkOtherSelfNegative() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+        usr2.frob(ILK, ausr2, ausr2, ausr2, int256(100 * WAD), int256(100 * WAD));
+        usr1.hope(ausr2);
+
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(usr2.art(ILK), 100 * WAD);
+        assertEq(usr2.ink(ILK), 100 * WAD);
+
+        vm.expectEmit(true, true, true, true);
+        emit Fork(ILK, ausr1, ausr2, -int256(100 * WAD), -int256(100 * WAD));
+        usr2.fork(ILK, ausr1, ausr2, -int256(100 * WAD), -int256(100 * WAD));
+
+        assertEq(usr1.art(ILK), 200 * WAD);
+        assertEq(usr1.ink(ILK), 200 * WAD);
+        assertEq(usr2.art(ILK), 0);
+        assertEq(usr2.ink(ILK), 0);
+    }
+
+    function testForkOtherSelfNoPermission() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+
+        vm.expectRevert("Vat/not-allowed");
+        usr2.fork(ILK, ausr1, ausr2, int256(100 * WAD), int256(100 * WAD));
+    }
+
+    function testForkSelfSelf() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(usr2.art(ILK), 0);
+        assertEq(usr2.ink(ILK), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Fork(ILK, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+        usr1.fork(ILK, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(usr2.art(ILK), 0);
+        assertEq(usr2.ink(ILK), 0);
+    }
+
+    function testForkNotSafeSrc() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+        usr2.frob(ILK, ausr2, ausr2, ausr2, int256(100 * WAD), int256(100 * WAD));
+        usr2.hope(ausr1);
+
+        vat.file(ILK, "spot", RAY / 2);     // Vaults are underwater
+
+        vm.expectRevert("Vat/not-safe-src");
+        usr1.fork(ILK, ausr1, ausr2, int256(20 * WAD), int256(20 * WAD));
+    }
+
+    function testForkNotSafeDst() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(50 * WAD));
+        usr2.frob(ILK, ausr2, ausr2, ausr2, int256(100 * WAD), int256(100 * WAD));
+        usr2.hope(ausr1);
+
+        vat.file(ILK, "spot", RAY / 2);     // usr2 vault is underwater
+
+        vm.expectRevert("Vat/not-safe-dst");
+        usr1.fork(ILK, ausr1, ausr2, int256(20 * WAD), int256(10 * WAD));
+    }
+
+    function testForkDustSrc() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+        usr2.frob(ILK, ausr2, ausr2, ausr2, int256(100 * WAD), int256(100 * WAD));
+        usr2.hope(ausr1);
+
+        vm.expectRevert("Vat/dust-src");
+        usr1.fork(ILK, ausr1, ausr2, int256(95 * WAD), int256(95 * WAD));
+    }
+
+    function testForkDustDst() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+        usr2.frob(ILK, ausr2, ausr2, ausr2, int256(100 * WAD), int256(100 * WAD));
+        usr2.hope(ausr1);
+
+        vm.expectRevert("Vat/dust-dst");
+        usr1.fork(ILK, ausr1, ausr2, -int256(95 * WAD), -int256(95 * WAD));
     }
 
 }
