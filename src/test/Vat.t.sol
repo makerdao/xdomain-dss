@@ -648,4 +648,71 @@ contract VatTest is DSSTest {
         usr1.fork(ILK, ausr1, ausr2, -int256(95 * WAD), -int256(95 * WAD));
     }
 
+    function testGrab() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(vat.Art(ILK), 100 * WAD);
+        assertEq(usr2.gems(ILK), 100 * WAD);
+        assertEq(vat.sin(TEST_ADDRESS), 0);
+        assertEq(vat.vice(), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Grab(ILK, ausr1, ausr2, TEST_ADDRESS, -int256(100 * WAD), -int256(100 * WAD));
+        vat.grab(ILK, ausr1, ausr2, TEST_ADDRESS, -int256(100 * WAD), -int256(100 * WAD));
+
+        assertEq(usr1.art(ILK), 0);
+        assertEq(usr1.ink(ILK), 0);
+        assertEq(vat.Art(ILK), 0);
+        assertEq(usr2.gems(ILK), 200 * WAD);
+        assertEq(vat.sin(TEST_ADDRESS), 100 * RAD);
+        assertEq(vat.vice(), 100 * RAD);
+    }
+
+    function testGrabPartial() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(vat.Art(ILK), 100 * WAD);
+        assertEq(usr2.gems(ILK), 100 * WAD);
+        assertEq(vat.sin(TEST_ADDRESS), 0);
+        assertEq(vat.vice(), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Grab(ILK, ausr1, ausr2, TEST_ADDRESS, -int256(50 * WAD), -int256(50 * WAD));
+        vat.grab(ILK, ausr1, ausr2, TEST_ADDRESS, -int256(50 * WAD), -int256(50 * WAD));
+
+        assertEq(usr1.art(ILK), 50 * WAD);
+        assertEq(usr1.ink(ILK), 50 * WAD);
+        assertEq(vat.Art(ILK), 50 * WAD);
+        assertEq(usr2.gems(ILK), 150 * WAD);
+        assertEq(vat.sin(TEST_ADDRESS), 50 * RAD);
+        assertEq(vat.vice(), 50 * RAD);
+    }
+
+    function testGrabPositive() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+        vat.suck(TEST_ADDRESS, TEST_ADDRESS, 100 * RAD);
+
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(vat.Art(ILK), 100 * WAD);
+        assertEq(usr2.gems(ILK), 100 * WAD);
+        assertEq(vat.sin(TEST_ADDRESS), 100 * RAD);
+        assertEq(vat.vice(), 100 * RAD);
+
+        vm.expectEmit(true, true, true, true);
+        emit Grab(ILK, ausr1, ausr2, TEST_ADDRESS, int256(100 * WAD), int256(100 * WAD));
+        vat.grab(ILK, ausr1, ausr2, TEST_ADDRESS, int256(100 * WAD), int256(100 * WAD));
+
+        assertEq(usr1.art(ILK), 200 * WAD);
+        assertEq(usr1.ink(ILK), 200 * WAD);
+        assertEq(vat.Art(ILK), 200 * WAD);
+        assertEq(usr2.gems(ILK), 0);
+        assertEq(vat.sin(TEST_ADDRESS), 0);
+        assertEq(vat.vice(), 0);
+    }
+
 }
