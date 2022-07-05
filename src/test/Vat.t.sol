@@ -493,4 +493,23 @@ contract VatTest is DSSTest {
         usr2.frob(ILK, ausr1, ausr1, ausr1, -int256(50 * WAD), -int256(50 * WAD));
     }
 
+    function testForkSelfOther() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+        usr2.hope(ausr1);
+
+        assertEq(usr1.art(ILK), 100 * WAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(usr2.art(ILK), 0);
+        assertEq(usr2.ink(ILK), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Fork(ILK, ausr1, ausr2, int256(100 * WAD), int256(100 * WAD));
+        usr1.fork(ILK, ausr1, ausr2, int256(100 * WAD), int256(100 * WAD));
+
+        assertEq(usr1.art(ILK), 0);
+        assertEq(usr1.ink(ILK), 0);
+        assertEq(usr2.art(ILK), 100 * WAD);
+        assertEq(usr2.ink(ILK), 100 * WAD);
+    }
+
 }
