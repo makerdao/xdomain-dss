@@ -504,6 +504,26 @@ contract VatTest is DSSTest {
         usr2.frob(ILK, ausr1, ausr1, ausr1, -int256(50 * WAD), -int256(50 * WAD));
     }
 
+    function testFrobNonOneRate() public setupCdpOps {
+        vat.fold(ILK, TEST_ADDRESS, int256(1 * RAY / 10));  // 10% interest collected
+
+        assertEq(usr1.dai(), 0);
+        assertEq(usr1.ink(ILK), 0);
+        assertEq(usr1.art(ILK), 0);
+        assertEq(usr1.gems(ILK), 100 * WAD);
+        assertEq(vat.Art(ILK), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(90 * WAD));
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(90 * WAD));
+
+        assertEq(usr1.dai(), 99 * RAD);
+        assertEq(usr1.ink(ILK), 100 * WAD);
+        assertEq(usr1.art(ILK), 90 * WAD);
+        assertEq(usr1.gems(ILK), 0);
+        assertEq(vat.Art(ILK), 90 * WAD);
+    }
+
     function testForkSelfOther() public setupCdpOps {
         usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
         usr2.hope(ausr1);
