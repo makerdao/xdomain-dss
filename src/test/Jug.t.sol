@@ -7,11 +7,6 @@ import "dss-test/DSSTest.sol";
 import {Jug} from "../Jug.sol";
 import {Vat} from "../Vat.sol";
 
-
-interface Hevm {
-    function warp(uint256) external;
-}
-
 interface VatLike {
     function ilks(bytes32) external view returns (
         uint256 Art,
@@ -23,187 +18,207 @@ interface VatLike {
 }
 
 contract Rpow is Jug {
+
     constructor(address vat_) Jug(vat_){}
 
     function pRpow(uint x, uint n, uint b) public pure returns(uint) {
         return _rpow(x, n, b);
     }
+
 }
 
 
 contract JugTest is DSSTest {
-    Hevm hevm;
+    
     Jug jug;
-    Vat  vat;
+    Vat vat;
 
-    function rad(uint wad_) internal pure returns (uint) {
-        return wad_ * 10 ** 27;
-    }
-    function wad(uint rad_) internal pure returns (uint) {
-        return rad_ / 10 ** 27;
-    }
-    function rho(bytes32 ilk) internal view returns (uint) {
-        (uint duty, uint rho_) = jug.ilks(ilk); duty;
-        return rho_;
-    }
-    function Art(bytes32 ilk) internal view returns (uint ArtV) {
-        (ArtV,,,,) = VatLike(address(vat)).ilks(ilk);
-    }
-    function rate(bytes32 ilk) internal view returns (uint rateV) {
-        (, rateV,,,) = VatLike(address(vat)).ilks(ilk);
-    }
-    function line(bytes32 ilk) internal view returns (uint lineV) {
-        (,,, lineV,) = VatLike(address(vat)).ilks(ilk);
+    bytes32 constant ILK = "SOME-ILK-A";
+
+    event Init(bytes32 indexed ilk);
+    event File(bytes32 indexed ilk, bytes32 indexed what, uint256 data);
+    event Drip(bytes32 indexed ilk);
+
+    function duty(bytes32 ilk) internal view returns (uint256 duty_) {
+        (duty_,) = jug.ilks(ilk);
     }
 
-    address ali = address(bytes20("ali"));
+    function rho(bytes32 ilk) internal view returns (uint256 rho_) {
+        (, rho_) = jug.ilks(ilk);
+    }
 
     function postSetup() internal virtual override {
-        hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-        hevm.warp(604411200);
-
         vat  = new Vat();
         jug = new Jug(address(vat));
         vat.rely(address(jug));
-        vat.init("i");
+        vat.init(ILK);
 
-        draw("i", 100 ether);
-    }
-    function draw(bytes32 ilk, uint dai) internal {
-        vat.file("Line", vat.Line() + rad(dai));
-        vat.file(ilk, "line", line(ilk) + rad(dai));
-        vat.file(ilk, "spot", 10 ** 27 * 10000 ether);
-        address self = address(this);
-        vat.slip(ilk, self,  10 ** 27 * 1 ether);
-        vat.frob(ilk, self, self, self, int(1 ether), int(dai));
+        vat.file("Line", 100 * RAD);
+        vat.file(ILK, "line", 100 * RAD);
+        vat.file(ILK, "spot", RAY);
+        vat.slip(ILK, address(this), int256(100 * WAD));
+        vat.frob(ILK, address(this), address(this), address(this), int256(100 * WAD), int256(100 * WAD));
     }
 
-    function test_drip_setup() public {
-        hevm.warp(0);
-        assertEq(uint256(block.timestamp), 0);
-        hevm.warp(1);
-        assertEq(uint256(block.timestamp), 1);
-        hevm.warp(2);
-        assertEq(uint256(block.timestamp), 2);
-        assertEq(Art("i"), 100 ether);
-    }
-    function test_drip_updates_rho() public {
-        jug.init("i");
-        assertEq(rho("i"), block.timestamp);
-
-        jug.file("i", "duty", 10 ** 27);
-        jug.drip("i");
-        assertEq(rho("i"), block.timestamp);
-        hevm.warp(block.timestamp + 1);
-        assertEq(rho("i"), block.timestamp - 1);
-        jug.drip("i");
-        assertEq(rho("i"), block.timestamp);
-        hevm.warp(block.timestamp + 1 days);
-        jug.drip("i");
-        assertEq(rho("i"), block.timestamp);
-    }
-    function test_drip_file() public {
-        jug.init("i");
-        jug.file("i", "duty", 10 ** 27);
-        jug.drip("i");
-        jug.file("i", "duty", 1000000564701133626865910626);  // 5% / day
-    }
-    function test_drip_0d() public {
-        jug.init("i");
-        jug.file("i", "duty", 1000000564701133626865910626);  // 5% / day
-        assertEq(vat.dai(ali), rad(0 ether));
-        jug.drip("i");
-        assertEq(vat.dai(ali), rad(0 ether));
-    }
-    function test_drip_1d() public {
-        jug.init("i");
-        jug.file("vow", ali);
-
-        jug.file("i", "duty", 1000000564701133626865910626);  // 5% / day
-        hevm.warp(block.timestamp + 1 days);
-        assertEq(wad(vat.dai(ali)), 0 ether);
-        jug.drip("i");
-        assertEq(wad(vat.dai(ali)), 5 ether);
-    }
-    function test_drip_2d() public {
-        jug.init("i");
-        jug.file("vow", ali);
-        jug.file("i", "duty", 1000000564701133626865910626);  // 5% / day
-
-        hevm.warp(block.timestamp + 2 days);
-        assertEq(wad(vat.dai(ali)), 0 ether);
-        jug.drip("i");
-        assertEq(wad(vat.dai(ali)), 10.25 ether);
-    }
-    function test_drip_3d() public {
-        jug.init("i");
-        jug.file("vow", ali);
-
-        jug.file("i", "duty", 1000000564701133626865910626);  // 5% / day
-        hevm.warp(block.timestamp + 3 days);
-        assertEq(wad(vat.dai(ali)), 0 ether);
-        jug.drip("i");
-        assertEq(wad(vat.dai(ali)), 15.7625 ether);
-    }
-    function test_drip_negative_3d() public {
-        jug.init("i");
-        jug.file("vow", ali);
-
-        jug.file("i", "duty", 999999706969857929985428567);  // -2.5% / day
-        hevm.warp(block.timestamp + 3 days);
-        assertEq(wad(vat.dai(address(this))), 100 ether);
-        vat.move(address(this), ali, rad(100 ether));
-        assertEq(wad(vat.dai(ali)), 100 ether);
-        jug.drip("i");
-        assertEq(wad(vat.dai(ali)), 92.6859375 ether);
+    function testConstructor() public {
+        assertEq(address(jug.vat()), address(vat));
+        assertEq(vat.wards(address(this)), 1);
     }
 
-    function test_drip_multi() public {
-        jug.init("i");
-        jug.file("vow", ali);
+    function testAuth() public {
+        checkAuth(address(jug), "Jug");
+    }
 
-        jug.file("i", "duty", 1000000564701133626865910626);  // 5% / day
-        hevm.warp(block.timestamp + 1 days);
-        jug.drip("i");
-        assertEq(wad(vat.dai(ali)), 5 ether);
-        jug.file("i", "duty", 1000001103127689513476993127);  // 10% / day
-        hevm.warp(block.timestamp + 1 days);
-        jug.drip("i");
-        assertEq(wad(vat.dai(ali)),  15.5 ether);
-        assertEq(wad(vat.debt()),     115.5 ether);
-        assertEq(rate("i") / 10 ** 9, 1.155 ether);
+    function testFile() public {
+        checkFileUint(address(jug), "Jug", ["base"]);
+        checkFileAddress(address(jug), "Jug", ["vow"]);
     }
-    function test_drip_base() public {
-        vat.init("j");
-        draw("j", 100 ether);
 
-        jug.init("i");
-        jug.init("j");
-        jug.file("vow", ali);
+    function testFileIlk() public {
+        jug.init(ILK);
 
-        jug.file("i", "duty", 1050000000000000000000000000);  // 5% / second
-        jug.file("j", "duty", 1000000000000000000000000000);  // 0% / second
-        jug.file("base",  uint256(50000000000000000000000000)); // 5% / second
-        hevm.warp(block.timestamp + 1);
-        jug.drip("i");
-        assertEq(wad(vat.dai(ali)), 10 ether);
+        vm.expectEmit(true, true, true, true);
+        emit File(ILK, "duty", 1);
+        jug.file(ILK, "duty", 1);
+        assertEq(duty(ILK), 1);
+
+        // Cannot set duty if rho not up to date
+        vm.warp(block.timestamp + 1);
+        vm.expectRevert("Jug/rho-not-updated");
+        jug.file(ILK, "duty", 1);
+        vm.warp(block.timestamp - 1);
+
+        // Invalid name
+        vm.expectRevert("Jug/file-unrecognized-param");
+        jug.file(ILK, "badWhat", 1);
+
+        // Not authed
+        jug.deny(address(this));
+        vm.expectRevert("Jug/not-authorized");
+        jug.file(ILK, "duty", 1);
     }
-    function test_file_duty() public {
-        jug.init("i");
-        hevm.warp(block.timestamp + 1);
-        jug.drip("i");
-        jug.file("i", "duty", 1);
+
+    function testInit() public {
+        assertEq(rho(ILK), 0);
+        assertEq(duty(ILK), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Init(ILK);
+        jug.init(ILK);
+
+        assertEq(rho(ILK), block.timestamp);
+        assertEq(duty(ILK), RAY);
     }
-    function testFail_file_duty() public {
-        jug.init("i");
-        hevm.warp(block.timestamp + 1);
-        jug.file("i", "duty", 1);
+
+    function testDripUpdatesRho() public {
+        jug.init(ILK);
+
+        jug.file(ILK, "duty", 10 ** 27);
+        jug.drip(ILK);
+        assertEq(rho(ILK), block.timestamp);
+        vm.warp(block.timestamp + 1);
+        assertEq(rho(ILK), block.timestamp - 1);
+        jug.drip(ILK);
+        assertEq(rho(ILK), block.timestamp);
+        vm.warp(block.timestamp + 1 days);
+        jug.drip(ILK);
+        assertEq(rho(ILK), block.timestamp);
     }
-    function test_rpow() public {
+
+    function testDripFile() public {
+        jug.init(ILK);
+        jug.file(ILK, "duty", RAY);
+        jug.drip(ILK);
+        jug.file(ILK, "duty", 1000000564701133626865910626);  // 5% / day
+    }
+
+    function testDrip0d() public {
+        jug.init(ILK);
+        jug.file(ILK, "duty", 1000000564701133626865910626);  // 5% / day
+        assertEq(vat.dai(TEST_ADDRESS), 0);
+        jug.drip(ILK);
+        assertEq(vat.dai(TEST_ADDRESS), 0);
+    }
+
+    function testDrip1d() public {
+        jug.init(ILK);
+        jug.file("vow", TEST_ADDRESS);
+
+        jug.file(ILK, "duty", 1000000564701133626865910626);  // 5% / day
+        vm.warp(block.timestamp + 1 days);
+        assertEq(vat.dai(TEST_ADDRESS), 0 ether);
+        jug.drip(ILK);
+        assertEq(vat.dai(TEST_ADDRESS), 5000000000000000000001603800000000000000000000);
+    }
+
+    function testDrip2d() public {
+        jug.init(ILK);
+        jug.file("vow", TEST_ADDRESS);
+        jug.file(ILK, "duty", 1000000564701133626865910626);  // 5% / day
+
+        vm.warp(block.timestamp + 2 days);
+        assertEq(vat.dai(TEST_ADDRESS), 0 ether);
+        jug.drip(ILK);
+        assertEq(vat.dai(TEST_ADDRESS), 10250000000000000000003367800000000000000000000);
+    }
+
+    function testDrip3d() public {
+        jug.init(ILK);
+        jug.file("vow", TEST_ADDRESS);
+
+        jug.file(ILK, "duty", 1000000564701133626865910626);  // 5% / day
+        vm.warp(block.timestamp + 3 days);
+        assertEq(vat.dai(TEST_ADDRESS), 0 ether);
+        jug.drip(ILK);
+        assertEq(vat.dai(TEST_ADDRESS), 15762500000000000000005304200000000000000000000);
+    }
+
+    function testDripNegative3d() public {
+        jug.init(ILK);
+        jug.file("vow", TEST_ADDRESS);
+
+        jug.file(ILK, "duty", 999999706969857929985428567);  // -2.5% / day
+        vm.warp(block.timestamp + 3 days);
+        assertEq(vat.dai(address(this)), 100 * RAD);
+        vat.move(address(this), TEST_ADDRESS, 100 * RAD);
+        assertEq(vat.dai(TEST_ADDRESS), 100 * RAD);
+        jug.drip(ILK);
+        assertEq(vat.dai(TEST_ADDRESS), 92685937500000000000002288500000000000000000000);
+    }
+
+    function testDripMulti() public {
+        jug.init(ILK);
+        jug.file("vow", TEST_ADDRESS);
+
+        jug.file(ILK, "duty", 1000000564701133626865910626);  // 5% / day
+        vm.warp(block.timestamp + 1 days);
+        jug.drip(ILK);
+        assertEq(vat.dai(TEST_ADDRESS), 5000000000000000000001603800000000000000000000);
+        jug.file(ILK, "duty", 1000001103127689513476993127);  // 10% / day
+        vm.warp(block.timestamp + 1 days);
+        jug.drip(ILK);
+        assertEq(vat.dai(TEST_ADDRESS), 15500000000000000000006151700000000000000000000);
+        assertEq(vat.debt(), 115500000000000000000006151700000000000000000000);
+        assertEq(vat.rate(ILK) / 10 ** 9, 1.155 ether);
+    }
+
+    function testDripBase() public {
+        jug.init(ILK);
+        jug.file("vow", TEST_ADDRESS);
+
+        jug.file(ILK, "duty", 1050000000000000000000000000);  // 5% / second
+        jug.file("base", uint256(50000000000000000000000000)); // 5% / second
+        vm.warp(block.timestamp + 1);
+        jug.drip(ILK);
+        assertEq(vat.dai(TEST_ADDRESS), 10 * RAD);
+    }
+
+    function testRpow() public {
         Rpow r = new Rpow(address(vat));
         uint result = r.pRpow(uint256(1000234891009084238901289093), uint256(3724), uint256(1e27));
         // python calc = 2.397991232255757e27 = 2397991232255757e12
         // expect 10 decimal precision
         assertEq(result / uint256(1e17), uint256(2397991232255757e12) / 1e17);
     }
+
 }
