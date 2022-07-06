@@ -31,11 +31,17 @@ contract User {
     function fork(bytes32 ilk, address src, address dst, int256 dink, int256 dart) public {
         vat.fork(ilk, src, dst, dink, dart);
     }
+    function heal(uint256 rad) public {
+        vat.heal(rad);
+    }
     function hope(address usr) public {
         vat.hope(usr);
     }
     function dai() public view returns (uint256) {
         return vat.dai(address(this));
+    }
+    function sin() public view returns (uint256) {
+        return vat.sin(address(this));
     }
     function gems(bytes32 ilk) public view returns (uint256) {
         return vat.gem(ilk, address(this));
@@ -713,6 +719,77 @@ contract VatTest is DSSTest {
         assertEq(usr2.gems(ILK), 0);
         assertEq(vat.sin(TEST_ADDRESS), 0);
         assertEq(vat.vice(), 0);
+    }
+
+    function testHeal() public {
+        vat.suck(ausr1, ausr1, 100 * RAD);
+        
+        assertEq(usr1.sin(), 100 * RAD);
+        assertEq(usr1.dai(), 100 * RAD);
+        assertEq(vat.vice(), 100 * RAD);
+        assertEq(vat.debt(), 100 * RAD);
+
+        vm.expectEmit(true, true, true, true);
+        emit Heal(ausr1, 100 * RAD);
+        usr1.heal(100 * RAD);
+        
+        assertEq(usr1.sin(), 0);
+        assertEq(usr1.dai(), 0);
+        assertEq(vat.vice(), 0);
+        assertEq(vat.debt(), 0);
+    }
+
+    function testSuck() public {
+        assertEq(usr1.sin(), 0);
+        assertEq(usr2.dai(), 0);
+        assertEq(vat.vice(), 0);
+        assertEq(vat.debt(), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Suck(ausr1, ausr2, 100 * RAD);
+        vat.suck(ausr1, ausr2, 100 * RAD);
+        
+        assertEq(usr1.sin(), 100 * RAD);
+        assertEq(usr2.dai(), 100 * RAD);
+        assertEq(vat.vice(), 100 * RAD);
+        assertEq(vat.debt(), 100 * RAD);
+    }
+
+    function testFold() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+
+        assertEq(vat.Art(ILK), 100 * WAD);
+        assertEq(vat.rate(ILK), RAY);
+        assertEq(vat.dai(TEST_ADDRESS), 0);
+        assertEq(vat.debt(), 100 * RAD);
+
+        vm.expectEmit(true, true, true, true);
+        emit Fold(ILK, TEST_ADDRESS, int256(1 * RAY / 10));
+        vat.fold(ILK, TEST_ADDRESS, int256(1 * RAY / 10));  // 10% interest collected
+
+        assertEq(vat.Art(ILK), 100 * WAD);
+        assertEq(vat.rate(ILK), 11 * RAY / 10);
+        assertEq(vat.dai(TEST_ADDRESS), 10 * RAD);
+        assertEq(vat.debt(), 110 * RAD);
+    }
+
+    function testFoldNegative() public setupCdpOps {
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
+        vat.fold(ILK, TEST_ADDRESS, int256(1 * RAY / 10));
+
+        assertEq(vat.Art(ILK), 100 * WAD);
+        assertEq(vat.rate(ILK), 11 * RAY / 10);
+        assertEq(vat.dai(TEST_ADDRESS), 10 * RAD);
+        assertEq(vat.debt(), 110 * RAD);
+
+        vm.expectEmit(true, true, true, true);
+        emit Fold(ILK, TEST_ADDRESS, -int256(1 * RAY / 20));
+        vat.fold(ILK, TEST_ADDRESS, -int256(1 * RAY / 20));  // -5% interest collected
+
+        assertEq(vat.Art(ILK), 100 * WAD);
+        assertEq(vat.rate(ILK), 21 * RAY / 20);
+        assertEq(vat.dai(TEST_ADDRESS), 5 * RAD);
+        assertEq(vat.debt(), 105 * RAD);
     }
 
 }
