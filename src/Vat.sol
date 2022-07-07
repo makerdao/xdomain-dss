@@ -84,24 +84,23 @@ contract Vat {
     }
 
     // --- Math ---
+    string private constant ARITHMETIC_ERROR = string(abi.encodeWithSignature("Panic(uint256)", 0x11));
     function _add(uint256 x, int256 y) internal pure returns (uint256 z) {
         unchecked {
             z = x + uint256(y);
         }
-        require(y >= 0 || z <= x);
-        require(y <= 0 || z >= x);
+        require(y >= 0 || z <= x, ARITHMETIC_ERROR);
+        require(y <= 0 || z >= x, ARITHMETIC_ERROR);
     }
-
     function _sub(uint256 x, int256 y) internal pure returns (uint256 z) {
         unchecked {
             z = x - uint256(y);
         }
-        require(y <= 0 || z <= x);
-        require(y >= 0 || z >= x);
+        require(y <= 0 || z <= x, ARITHMETIC_ERROR);
+        require(y >= 0 || z >= x, ARITHMETIC_ERROR);
     }
-
     function _int256(uint256 x) internal pure returns (int256 y) {
-        require((y = int256(x)) >= 0);
+        require((y = int256(x)) >= 0, ARITHMETIC_ERROR);
     }
 
     // --- Administration ---

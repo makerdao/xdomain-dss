@@ -2,87 +2,180 @@
 
 pragma solidity ^0.8.13;
 
-import "ds-test/test.sol";
+import "dss-test/DSSTest.sol";
+
 import {Vat} from '../Vat.sol';
 import {Pot} from '../Pot.sol';
 
-interface Hevm {
-    function warp(uint256) external;
-}
-
-contract DSRTest is DSTest {
-    Hevm hevm;
+contract PotTest is DSSTest {
 
     Vat vat;
     Pot pot;
 
-    address vow;
-    address self;
-    address potb;
+    event Cage();
+    event Drip();
+    event Join(address indexed usr, uint256 wad);
+    event Exit(address indexed usr, uint256 wad);
 
-    function rad(uint wad_) internal pure returns (uint) {
-        return wad_ * 10 ** 27;
-    }
-    function wad(uint rad_) internal pure returns (uint) {
-        return rad_ / 10 ** 27;
-    }
-
-    function setUp() public {
-        hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-        hevm.warp(604411200);
-
+    function postSetup() internal virtual override {
         vat = new Vat();
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
         pot = new Pot(address(vat));
         vat.rely(address(pot));
-        self = address(this);
-        potb = address(pot);
 
-        vow = address(bytes20("vow"));
-        pot.file("vow", vow);
+        pot.file("vow", TEST_ADDRESS);
 
-        vat.suck(self, self, rad(100 ether));
+        vat.suck(address(this), address(this), 100 * RAD);
         vat.hope(address(pot));
     }
-    function test_save_0d() public {
-        assertEq(vat.dai(self), rad(100 ether));
 
-        pot.join(100 ether);
-        assertEq(wad(vat.dai(self)),   0 ether);
-        assertEq(pot.pie(self),      100 ether);
-
-        pot.drip();
-
-        pot.exit(100 ether);
-        assertEq(wad(vat.dai(self)), 100 ether);
+    function testConstructor() public {
+        assertEq(address(pot.vat()), address(vat));
+        assertEq(pot.wards(address(this)), 1);
+        assertEq(pot.dsr(), RAY);
+        assertEq(pot.chi(), RAY);
+        assertEq(pot.rho(), block.timestamp);
+        assertEq(pot.live(), 1);
     }
-    function test_save_1d() public {
-        pot.join(100 ether);
-        pot.file("dsr", uint256(1000000564701133626865910626));  // 5% / day
-        hevm.warp(block.timestamp + 1 days);
-        pot.drip();
-        assertEq(pot.pie(self), 100 ether);
-        pot.exit(100 ether);
-        assertEq(wad(vat.dai(self)), 105 ether);
+
+    function testAuth() public {
+        checkAuth(address(pot), "Pot");
     }
-    function test_drip_multi() public {
-        pot.join(100 ether);
-        pot.file("dsr", uint256(1000000564701133626865910626));  // 5% / day
-        hevm.warp(block.timestamp + 1 days);
+
+    function testFile() public {
+        checkFileUint(address(pot), "Pot", ["dsr"]);
+        checkFileAddress(address(pot), "Pot", ["vow"]);
+    }
+
+    function testFileNotLive() public {
+        pot.cage();
+
+        vm.expectRevert("Pot/not-live");
+        pot.file("dsr", 1);
+    }
+
+    function testFileRhoNotUpdated() public {
+        vm.warp(block.timestamp + 1);
+
+        vm.expectRevert("Pot/rho-not-updated");
+        pot.file("dsr", 1);
+    }
+
+    function testCage() public {
+        pot.file("dsr", 123);
+
+        assertEq(pot.live(), 1);
+        assertEq(pot.dsr(), 123);
+
+        vm.expectEmit(true, true, true, true);
+        emit Cage();
+        pot.cage();
+
+        assertEq(pot.live(), 0);
+        assertEq(pot.dsr(), RAY);
+    }
+
+    function testDrip() public {
+        pot.join(100 * WAD);
+        pot.file("dsr", 1000000564701133626865910626);  // 5% / day
+
+        assertEq(pot.chi(), RAY);
+        assertEq(pot.rho(), block.timestamp);
+        assertEq(vat.sin(TEST_ADDRESS), 0);
+        assertEq(vat.dai(address(pot)), 100 * RAD);
+
+        vm.warp(block.timestamp + 1 days);
+
+        vm.expectEmit(true, true, true, true);
+        emit Drip();
+        uint256 chi_ = pot.drip();
+
+        assertEq(pot.chi(), 1050000000000000000000016038);
+        assertEq(pot.chi(), chi_);
+        assertEq(pot.rho(), block.timestamp);
+        assertEq(vat.sin(TEST_ADDRESS), 5000000000000000000001603800000000000000000000);
+        assertEq(vat.dai(address(pot)), 105000000000000000000001603800000000000000000000);
+    }
+
+    function testJoin() public {
+        assertEq(vat.dai(address(this)), 100 * RAD);
+        assertEq(pot.pie(address(this)), 0);
+        assertEq(pot.Pie(), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Join(address(this), 100 * WAD);
+        pot.join(100 * WAD);
+
+        assertEq(vat.dai(address(this)), 0);
+        assertEq(pot.pie(address(this)), 100 * WAD);
+        assertEq(pot.Pie(), 100 * WAD);
+    }
+
+    function testJoinRhoNotUpdated() public {
+        vm.warp(block.timestamp + 1);
+        vm.expectRevert("Pot/rho-not-updated");
+        pot.join(100 * WAD);
+    }
+
+    function testExit() public {
+        pot.join(100 * WAD);
+
+        assertEq(vat.dai(address(this)), 0);
+        assertEq(pot.pie(address(this)), 100 * WAD);
+        assertEq(pot.Pie(), 100 * WAD);
+
+        vm.expectEmit(true, true, true, true);
+        emit Exit(address(this), 100 * WAD);
+        pot.exit(100 * WAD);
+
+        assertEq(vat.dai(address(this)), 100 * RAD);
+        assertEq(pot.pie(address(this)), 0);
+        assertEq(pot.Pie(), 0);
+    }
+
+    function testSave0d() public {
+        pot.join(100 * WAD);
+
+        assertEq(vat.dai(address(this)), 0);
+        assertEq(pot.pie(address(this)), 100 * WAD);
+
         pot.drip();
-        assertEq(wad(vat.dai(potb)),   105 ether);
+        pot.exit(100 * WAD);
+
+        assertEq(vat.dai(address(this)), 100 * RAD);
+    }
+
+    function testSave1d() public {
+        pot.join(100 * WAD);
+        pot.file("dsr", uint256(1000000564701133626865910626));  // 5% / day
+        vm.warp(block.timestamp + 1 days);
+        pot.drip();
+        assertEq(pot.pie(address(this)), 100 * WAD);
+        pot.exit(100 * WAD);
+        assertEq(vat.dai(address(this)), 105000000000000000000001603800000000000000000000);
+    }
+
+    function testDripMulti() public {
+        pot.join(100 * WAD);
+        pot.file("dsr", uint256(1000000564701133626865910626));  // 5% / day
+        vm.warp(block.timestamp + 1 days);
+        pot.drip();
+        assertEq(vat.dai(address(pot)), 105000000000000000000001603800000000000000000000);
         pot.file("dsr", uint256(1000001103127689513476993127));  // 10% / day
-        hevm.warp(block.timestamp + 1 days);
+        vm.warp(block.timestamp + 1 days);
         pot.drip();
-        assertEq(wad(vat.sin(vow)), 15.5 ether);
-        assertEq(wad(vat.dai(potb)), 115.5 ether);
-        assertEq(pot.Pie(),          100   ether);
-        assertEq(pot.chi() / 10 ** 9, 1.155 ether);
+        assertEq(vat.sin(TEST_ADDRESS), 15500000000000000000006151700000000000000000000);
+        assertEq(vat.dai(address(pot)), 115500000000000000000006151700000000000000000000);
+        assertEq(pot.Pie(), 100 * WAD);
+        assertEq(pot.chi() / 10 ** 9, 1155 * WAD / 1000);
     }
-    function test_drip_multi_inBlock() public {
+
+    function testDripMultiInBlock() public {
         pot.drip();
-        uint rho = pot.rho();
+        uint256 rho = pot.rho();
         assertEq(rho, block.timestamp);
-        hevm.warp(block.timestamp + 1 days);
+        vm.warp(block.timestamp + 1 days);
         rho = pot.rho();
         assertEq(rho, block.timestamp - 1 days);
         pot.drip();
@@ -92,47 +185,35 @@ contract DSRTest is DSTest {
         rho = pot.rho();
         assertEq(rho, block.timestamp);
     }
-    function test_save_multi() public {
-        pot.join(100 ether);
+
+    function testSaveMulti() public {
+        pot.join(100 * WAD);
         pot.file("dsr", uint256(1000000564701133626865910626));  // 5% / day
-        hevm.warp(block.timestamp + 1 days);
+        vm.warp(block.timestamp + 1 days);
         pot.drip();
-        pot.exit(50 ether);
-        assertEq(wad(vat.dai(self)), 52.5 ether);
-        assertEq(pot.Pie(),          50.0 ether);
+        pot.exit(50 * WAD);
+        assertEq(vat.dai(address(this)), 52500000000000000000000801900000000000000000000);
+        assertEq(pot.Pie(), 50 * WAD);
 
         pot.file("dsr", uint256(1000001103127689513476993127));  // 10% / day
-        hevm.warp(block.timestamp + 1 days);
+        vm.warp(block.timestamp + 1 days);
         pot.drip();
-        pot.exit(50 ether);
-        assertEq(wad(vat.dai(self)), 110.25 ether);
-        assertEq(pot.Pie(),            0.00 ether);
+        pot.exit(50 * WAD);
+        assertEq(vat.dai(address(this)), 110250000000000000000003877750000000000000000000);
+        assertEq(pot.Pie(), 0);
     }
-    function test_fresh_chi() public {
-        uint rho = pot.rho();
+
+    function testFreshChi() public {
+        uint256 rho = pot.rho();
         assertEq(rho, block.timestamp);
-        hevm.warp(block.timestamp + 1 days);
+        vm.warp(block.timestamp + 1 days);
         assertEq(rho, block.timestamp - 1 days);
         pot.drip();
-        pot.join(100 ether);
-        assertEq(pot.pie(self), 100 ether);
-        pot.exit(100 ether);
+        pot.join(100 * WAD);
+        assertEq(pot.pie(address(this)), 100 * WAD);
+        pot.exit(100 * WAD);
         // if we exit in the same transaction we should not earn DSR
-        assertEq(wad(vat.dai(self)), 100 ether);
+        assertEq(vat.dai(address(this)), 100 * RAD);
     }
-    function testFail_stale_chi() public {
-        pot.file("dsr", uint256(1000000564701133626865910626));  // 5% / day
-        pot.drip();
-        hevm.warp(block.timestamp + 1 days);
-        pot.join(100 ether);
-    }
-    function test_file() public {
-        hevm.warp(block.timestamp + 1);
-        pot.drip();
-        pot.file("dsr", uint256(1));
-    }
-    function testFail_file() public {
-        hevm.warp(block.timestamp + 1);
-        pot.file("dsr", uint256(1));
-    }
+
 }
