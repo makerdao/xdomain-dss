@@ -49,6 +49,8 @@ contract JugTest is DSSTest {
 
     function postSetup() internal virtual override {
         vat  = new Vat();
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
         jug = new Jug(address(vat));
         vat.rely(address(jug));
         vat.init(ILK);
@@ -62,7 +64,7 @@ contract JugTest is DSSTest {
 
     function testConstructor() public {
         assertEq(address(jug.vat()), address(vat));
-        assertEq(vat.wards(address(this)), 1);
+        assertEq(jug.wards(address(this)), 1);
     }
 
     function testAuth() public {

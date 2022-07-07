@@ -82,6 +82,8 @@ contract VatTest is DSSTest {
     event Fold(bytes32 indexed i, address indexed u, int256 rate);
 
     function postSetup() internal virtual override {
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
         vat = new Vat();
         usr1 = new User(vat);
         usr2 = new User(vat);
