@@ -308,8 +308,6 @@ contract End {
         require(vat.dai(address(vow)) == 0, "End/surplus-not-zero");
         require(block.timestamp >= when + wait, "End/wait-not-finished");
         debt = vat.debt() - cure.tell();
-        uint256 grain = vow.grain() * RAY;
-        if (debt < grain) vow.tell(grain - debt);
         emit Thaw();
     }
     function flow(bytes32 ilk) external {
