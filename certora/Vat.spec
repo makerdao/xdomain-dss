@@ -535,7 +535,7 @@ rule frob(bytes32 i, address u, address v, address w, int256 dink, int256 dart) 
 
 // Verify revert rules on frob
 // TODO: Review timeout
-rule frob_revert(bytes32 i, address u, address v, address w, int256 dink, int256 dart) {
+function frob_revert_internal(bytes32 i, address u, address v, address w, int256 dink, int256 dart) {
     env e;
 
     uint256 live = live();
@@ -612,6 +612,30 @@ rule frob_revert(bytes32 i, address u, address v, address w, int256 dink, int256
                            revert13 || revert14 || revert15 ||
                            revert16 || revert17 || revert18 ||
                            revert19 || revert20, "Revert rules are not covering all the cases");
+}
+
+rule frob_revert_1(bytes32 i, address u, address v, address w, int256 dink, int256 dart) {
+    require(dink >= 0);
+    require(dart >= 0);
+    frob_revert_internal(i, u, v, w, dink, dart);
+}
+
+rule frob_revert_2(bytes32 i, address u, address v, address w, int256 dink, int256 dart) {
+    require(dink >= 0);
+    require(dart < 0);
+    frob_revert_internal(i, u, v, w, dink, dart);
+}
+
+rule frob_revert_3(bytes32 i, address u, address v, address w, int256 dink, int256 dart) {
+    require(dink < 0);
+    require(dart >= 0);
+    frob_revert_internal(i, u, v, w, dink, dart);
+}
+
+rule frob_revert_4(bytes32 i, address u, address v, address w, int256 dink, int256 dart) {
+    require(dink < 0);
+    require(dart < 0);
+    frob_revert_internal(i, u, v, w, dink, dart);
 }
 
 // Verify that variables behave correctly on fork
