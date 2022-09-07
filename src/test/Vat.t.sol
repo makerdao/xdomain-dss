@@ -816,7 +816,7 @@ contract VatTest is DSSTest {
 
 }
 
-contract SwellTest is DSTest {
+/*contract SwellTest is DSTest {
     Vat vat;
     Usr ali;
     address a;
@@ -846,4 +846,4 @@ contract SwellTest is DSTest {
         assertEq(vat.dai(a), rad(75 ether));
         assertEq(vat.surf(), -int256(rad(25 ether)));
     }
-}
+}*/
