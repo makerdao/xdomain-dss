@@ -1,5 +1,6 @@
 /out
 .DS_Store
+cache/
 
 # certora
 .*certora*
