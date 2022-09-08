@@ -79,6 +79,7 @@ contract VatTest is DSSTest {
     event Grab(bytes32 indexed i, address indexed u, address v, address w, int256 dink, int256 dart);
     event Heal(address indexed u, uint256 rad);
     event Suck(address indexed u, address indexed v, uint256 rad);
+    event Swell(address indexed u, int256 rad);
     event Fold(bytes32 indexed i, address indexed u, int256 rate);
 
     function postSetup() internal virtual override {
@@ -777,6 +778,49 @@ contract VatTest is DSSTest {
         assertEq(vat.debt(), 100 * RAD);
     }
 
+    function testSwell() public {
+        assertEq(vat.surf(), int256(0));
+        assertEq(vat.debt(), 0);
+        assertEq(vat.vice(), 0);
+        assertEq(vat.dai(ausr1), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Swell(ausr1, int256(100 * RAD));
+        vat.swell(ausr1, int256(100 * RAD));
+        
+        assertEq(vat.surf(), int256(100 * RAD));
+        assertEq(vat.debt(), 0);
+        assertEq(vat.vice(), 0);
+        assertEq(vat.dai(ausr1), 100 * RAD);
+
+        vm.expectEmit(true, true, true, true);
+        emit Swell(ausr1, -int256(50 * RAD));
+        vat.swell(ausr1, -int256(50 * RAD));
+        
+        assertEq(vat.surf(), int256(50 * RAD));
+        assertEq(vat.debt(), 0);
+        assertEq(vat.vice(), 0);
+        assertEq(vat.dai(ausr1), 50 * RAD);
+    }
+
+    function testSwellNegative() public {
+        vat.suck(ausr1, ausr1, 100 * RAD);
+
+        assertEq(vat.surf(), int256(0));
+        assertEq(vat.debt(), 100 * RAD);
+        assertEq(vat.vice(), 100 * RAD);
+        assertEq(vat.dai(ausr1), 100 * RAD);
+
+        vm.expectEmit(true, true, true, true);
+        emit Swell(ausr1, -int256(100 * RAD));
+        vat.swell(ausr1, -int256(100 * RAD));
+        
+        assertEq(vat.surf(), -int256(100 * RAD));
+        assertEq(vat.debt(), 100 * RAD);
+        assertEq(vat.vice(), 100 * RAD);
+        assertEq(vat.dai(ausr1), 0);
+    }
+
     function testFold() public setupCdpOps {
         usr1.frob(ILK, ausr1, ausr1, ausr1, int256(100 * WAD), int256(100 * WAD));
 
@@ -815,35 +859,3 @@ contract VatTest is DSSTest {
     }
 
 }
-
-/*contract SwellTest is DSTest {
-    Vat vat;
-    Usr ali;
-    address a;
-
-    function rad(uint wad) internal pure returns (uint) {
-        return wad * 10 ** 27;
-    }
-
-    function setUp() public {
-        vat = new Vat();
-        ali = new Usr(vat);
-        a = address(ali);
-    }
-    function test_swell() public {
-        assertEq(vat.dai(a), 0);
-        assertEq(vat.surf(), 0);
-        vat.swell(a, int256(rad(100 ether)));
-        assertEq(vat.dai(a), rad(100 ether));
-        assertEq(vat.surf(), int256(rad(100 ether)));
-        vat.swell(a, -int256(rad(50 ether)));
-        assertEq(vat.dai(a), rad(50 ether));
-        assertEq(vat.surf(), int256(rad(50 ether)));
-        vat.suck(address(123), address(a), rad(100 ether));
-        assertEq(vat.dai(a), rad(150 ether));
-        assertEq(vat.surf(), int256(rad(50 ether)));
-        vat.swell(a, -int256(rad(75 ether)));   // Swell can be negative
-        assertEq(vat.dai(a), rad(75 ether));
-        assertEq(vat.surf(), -int256(rad(25 ether)));
-    }
-}*/
