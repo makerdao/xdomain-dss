@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity >=0.6.12;
+pragma solidity ^0.8.13;
 
 import "dss-test/DSSTest.sol";
 
@@ -181,6 +181,8 @@ contract CureTest is DSSTest {
 
     function testCage() public {
         assertEq(cure.live(), 1);
+        vm.expectEmit(true, true, true, true);
+        emit Cage();
         cure.cage();
         assertEq(cure.live(), 0);
     }
@@ -278,6 +280,8 @@ contract CureTest is DSSTest {
 
         cure.cage();
 
+        vm.expectEmit(true, true, true, true);
+        emit Load(source1);
         cure.load(source1);
         assertEq(cure.lCount(), 1);
         cure.load(source2);

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.13;
 
-import "ds-test/test.sol";
+import "dss-test/DSSTest.sol";
 import "ds-value/value.sol";
 
 import {MockToken} from './mocks/Token.sol';
@@ -14,11 +14,8 @@ import {End}     from '../End.sol';
 import {Spotter} from '../Spotter.sol';
 import {Cure}    from '../Cure.sol';
 
-interface Hevm {
-    function warp(uint256) external;
-}
-
 contract Usr {
+
     Vat     public vat;
     End     public end;
     MockToken public claimToken;
@@ -55,6 +52,7 @@ contract Usr {
     function approveClaim(address who, uint256 amount) public {
         claimToken.approve(who, amount);
     }
+
 }
 
 contract MockVow {
@@ -68,6 +66,7 @@ contract MockVow {
 
     function grain() external view returns (uint256) {
         vat.Line();
+        return 0;
     }
 
     function tell(uint256 value) external {
@@ -80,8 +79,7 @@ contract MockVow {
 
 }
 
-contract EndTest is DSTest {
-    Hevm hevm;
+contract EndTest is DSSTest {
 
     Vat         vat;
     End         end;
@@ -91,6 +89,15 @@ contract EndTest is DSTest {
     Cure        cure;
     MockToken   claimToken;
 
+    event Cage();
+    event Cage(bytes32 indexed ilk);
+    event Skim(bytes32 indexed ilk, address indexed urn, uint256 wad, uint256 art);
+    event Free(bytes32 indexed ilk, address indexed usr, uint256 ink);
+    event Thaw();
+    event Flow(bytes32 indexed ilk);
+    event Pack(address indexed usr, uint256 wad);
+    event Cash(bytes32 indexed ilk, address indexed usr, uint256 wad);
+
     struct Ilk {
         DSValue pip;
         MockToken gem;
@@ -99,8 +106,6 @@ contract EndTest is DSTest {
 
     mapping (bytes32 => Ilk) ilks;
 
-    uint256 constant WAD = 10 ** 18;
-    uint256 constant RAY = 10 ** 27;
     uint256 constant MLN = 10 ** 6;
 
     function ray(uint256 wad) internal pure returns (uint) {
@@ -173,9 +178,8 @@ contract EndTest is DSTest {
         return ilks[name];
     }
 
-    function setUp() public {
-        hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-        hevm.warp(604411200);
+    function postSetup() internal virtual override {
+        vm.warp(604411200);
 
         vat = new Vat();
         claimToken = new MockToken('CLAIM');
@@ -192,6 +196,8 @@ contract EndTest is DSTest {
 
         cure = new Cure();
 
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
         end = new End();
         end.file("vat", address(vat));
         end.file("vow", address(vow));
@@ -206,11 +212,64 @@ contract EndTest is DSTest {
         cure.rely(address(end));
     }
 
-    function test_cage_basic() public {
+    function testConstructor() public {
+        assertEq(end.live(), 1);
+        assertEq(end.wards(address(this)), 1);
+    }
+
+    function testAuth() public {
+        checkAuth(address(end), "End");
+    }
+
+    function testFile() public {
+        checkFileUint(address(end), "End", ["wait"]);
+        checkFileAddress(address(end), "End", ["vat", "vow", "pot", "spot", "cure", "claim"]);
+    }
+
+    function testAuthModifier() public {
+        end.deny(address(this));
+
+        bytes[] memory funcs = new bytes[](1);
+        funcs[0] = abi.encodeWithSignature("cage()", 0, 0, 0, 0);
+
+        for (uint256 i = 0; i < funcs.length; i++) {
+            assertRevert(address(end), funcs[i], "End/not-authorized");
+        }
+    }
+
+    function testLive() public {
+        {
+            bytes[] memory funcs = new bytes[](3);
+            funcs[0] = abi.encodeWithSignature("cage(bytes32)", 0, 0, 0, 0);
+            funcs[1] = abi.encodeWithSelector(End.free.selector, 0, 0, 0, 0);
+            funcs[2] = abi.encodeWithSelector(End.thaw.selector, 0, 0, 0, 0);
+
+            for (uint256 i = 0; i < funcs.length; i++) {
+                assertRevert(address(end), funcs[i], "End/still-live");
+            }
+        }
+
+        end.cage();
+
+        {
+            bytes[] memory funcs = new bytes[](3);
+            funcs[0] = abi.encodeWithSignature("file(bytes32,address)", 0, 0, 0, 0);
+            funcs[1] = abi.encodeWithSignature("file(bytes32,uint256)", 0, 0, 0, 0);
+            funcs[2] = abi.encodeWithSignature("cage()", 0, 0, 0, 0);
+
+            for (uint256 i = 0; i < funcs.length; i++) {
+                assertRevert(address(end), funcs[i], "End/not-live");
+            }
+        }
+    }
+
+    function testCageBasic() public {
         assertEq(end.live(), 1);
         assertEq(vat.live(), 1);
         assertEq(pot.live(), 1);
         assertEq(spot.live(), 1);
+        vm.expectEmit(true, true, true, true);
+        emit Cage();
         end.cage();
         assertEq(end.live(), 0);
         assertEq(vat.live(), 0);
@@ -218,7 +277,7 @@ contract EndTest is DSTest {
         assertEq(spot.live(), 0);
     }
 
-    function test_cage_pot_drip() public {
+    function testCagePotDrip() public {
         assertEq(pot.live(), 1);
         pot.drip();
         end.cage();
@@ -230,7 +289,7 @@ contract EndTest is DSTest {
 
     // -- Scenario where there is one over-collateralised CDP
     // -- and there is no Vow deficit or surplus
-    function test_cage_collateralised() public {
+    function testCageCollateralised() public {
         Ilk memory gold = init_collateral("gold");
 
         Usr ali = new Usr(vat, end);
@@ -248,7 +307,11 @@ contract EndTest is DSTest {
         // collateral price is 5
         gold.pip.poke(bytes32(5 * WAD));
         end.cage();
+        vm.expectEmit(true, true, true, true);
+        emit Cage("gold");
         end.cage("gold");
+        vm.expectEmit(true, true, true, true);
+        emit Skim("gold", urn1, 3 ether, 15 ether);
         end.skim("gold", urn1);
 
         // local checks:
@@ -261,19 +324,27 @@ contract EndTest is DSTest {
         assertEq(vat.vice(), rad(15 ether));
 
         // CDP closing
+        vm.expectEmit(true, true, true, true);
+        emit Free("gold", address(ali), 7 ether);
         ali.free("gold");
         assertEq(ink("gold", urn1), 0);
         assertEq(gem("gold", urn1), 7 ether);
         ali.exit(gold.gemA, address(this), 7 ether);
 
-        hevm.warp(block.timestamp + 1 hours);
+        vm.warp(block.timestamp + 1 hours);
+        vm.expectEmit(true, true, true, true);
+        emit Thaw();
         end.thaw();
+        vm.expectEmit(true, true, true, true);
+        emit Flow("gold");
         end.flow("gold");
         assertTrue(end.fix("gold") != 0);
 
         // dai redemption
         claimToken.mint(address(ali), 15 ether);
         ali.approveClaim(address(end), 15 ether);
+        vm.expectEmit(true, true, true, true);
+        emit Pack(address(ali), 15 ether);
         ali.pack(15 ether);
 
         // global checks:
@@ -282,6 +353,8 @@ contract EndTest is DSTest {
         assertEq(vat.sin(address(vow)), rad(15 ether));
         assertEq(claimToken.balanceOf(address(vow)), 15 ether);
 
+        vm.expectEmit(true, true, true, true);
+        emit Cash("gold", address(ali), 15 ether);
         ali.cash("gold", 15 ether);
 
         // local checks:
@@ -295,7 +368,7 @@ contract EndTest is DSTest {
 
     // -- Scenario where there is one over-collateralised and one
     // -- under-collateralised CDP, and no Vow deficit or surplus
-    function test_cage_undercollateralised() public {
+    function testCageUndercollateralised() public {
         Ilk memory gold = init_collateral("gold");
 
         Usr ali = new Usr(vat, end);
@@ -341,7 +414,7 @@ contract EndTest is DSTest {
         assertEq(gem("gold", urn1), 2.5 ether);
         ali.exit(gold.gemA, address(this), 2.5 ether);
 
-        hevm.warp(block.timestamp + 1 hours);
+        vm.warp(block.timestamp + 1 hours);
         end.thaw();
         end.flow("gold");
         assertTrue(end.fix("gold") != 0);
@@ -390,7 +463,7 @@ contract EndTest is DSTest {
 
     // -- Scenario where there is one over-collateralised CDP
     // -- and there is a deficit in the Vow
-    function test_cage_collateralised_deficit() public {
+    function testCageCollateralisedDeficit() public {
         Ilk memory gold = init_collateral("gold");
 
         Usr ali = new Usr(vat, end);
@@ -428,7 +501,7 @@ contract EndTest is DSTest {
         assertEq(gem("gold", urn1), 7 ether);
         ali.exit(gold.gemA, address(this), 7 ether);
 
-        hevm.warp(block.timestamp + 1 hours);
+        vm.warp(block.timestamp + 1 hours);
         end.thaw();
         end.flow("gold");
         assertTrue(end.fix("gold") != 0);
@@ -459,7 +532,7 @@ contract EndTest is DSTest {
     // -- Scenario where there is one over-collateralised CDP
     // -- and one under-collateralised CDP and there is a
     // -- surplus in the Vow
-    function test_cage_undercollateralised_surplus() public {
+    function testCageUndercollateralisedSurplus() public {
         Ilk memory gold = init_collateral("gold");
 
         Usr ali = new Usr(vat, end);
@@ -507,7 +580,7 @@ contract EndTest is DSTest {
         assertEq(gem("gold", urn1), 2.5 ether);
         ali.exit(gold.gemA, address(this), 2.5 ether);
 
-        hevm.warp(block.timestamp + 1 hours);
+        vm.warp(block.timestamp + 1 hours);
         // balance the vow
         vow.heal(rad(1 ether));
         end.thaw();
@@ -555,7 +628,7 @@ contract EndTest is DSTest {
     // -- Scenario where there is one over-collateralised and one
     // -- under-collateralised CDP of different collateral types
     // -- and no Vow deficit or surplus
-    function test_cage_net_undercollateralised_multiple_ilks() public {
+    function testCageNetUndercollateralisedMultipleIlks() public {
         Ilk memory gold = init_collateral("gold");
         Ilk memory coal = init_collateral("coal");
 
@@ -585,7 +658,7 @@ contract EndTest is DSTest {
         end.skim("gold", urn1);  // over-collateralised
         end.skim("coal", urn2);  // under-collateralised
 
-        hevm.warp(block.timestamp + 1 hours);
+        vm.warp(block.timestamp + 1 hours);
         end.thaw();
         end.flow("gold");
         end.flow("coal");
@@ -646,7 +719,7 @@ contract EndTest is DSTest {
     }
 
     // -- Scenario where flow() used to overflow
-    function test_overflow() public {
+    function testOverflow() public {
         Ilk memory gold = init_collateral("gold");
 
         Usr ali = new Usr(vat, end);
@@ -682,12 +755,11 @@ contract EndTest is DSTest {
         assertEq(gem("gold", urn1), 300_000 ether);
         ali.exit(gold.gemA, address(this), 300_000 ether);
 
-        hevm.warp(block.timestamp + 1 hours);
+        vm.warp(block.timestamp + 1 hours);
         end.thaw();
         end.flow("gold");
     }
 
-    uint256 constant RAD = 10**45;
     function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x);
     }
@@ -716,7 +788,7 @@ contract EndTest is DSTest {
     }
     uint256 constant MIN_DEBT   = 10**6 * RAD;  // Minimum debt for fuzz runs
     uint256 constant REDEEM_AMT = 1_000 * WAD;  // Amount of DAI to redeem for error checking
-    function test_fuzz_fix_calcs_0_1(uint256 col_seed, uint192 debt_seed) public {
+    function testFuzzFixCalcs_0_1(uint256 col_seed, uint192 debt_seed) public {
         uint256 col = col_seed % (115792 * WAD);  // somewhat biased, but not enough to matter
         if (col < 10**12) col += 10**12;  // At least 10^-6 WAD units of collateral; this makes the fixes almost always non-zero.
         uint256 debt = debt_seed;
@@ -732,7 +804,7 @@ contract EndTest is DSTest {
         // Assert on percentage error of returned collateral
         wAssertCloseEnough(col0, col1);
     }
-    function test_fuzz_fix_calcs_0_2(uint256 col_seed, uint192 debt_seed) public {
+    function testFuzzFixCalcs_0_2(uint256 col_seed, uint192 debt_seed) public {
         uint256 col = col_seed % (115792 * WAD);  // somewhat biased, but not enough to matter
         if (col < 10**12) col += 10**12;  // At least 10^-6 WAD units of collateral; this makes the fixes almost always non-zero.
         uint256 debt = debt_seed;
@@ -748,7 +820,7 @@ contract EndTest is DSTest {
         // Assert on percentage error of returned collateral
         wAssertCloseEnough(col0, col2);
     }
-    function test_fuzz_fix_calcs_1_2(uint256 col_seed, uint192 debt_seed) public {
+    function testFuzzFixCalcs_1_2(uint256 col_seed, uint192 debt_seed) public {
         uint256 col = col_seed % (10**14 * WAD);  // somewhat biased, but not enough to matter
         if (col < 10**12) col += 10**12;  // At least 10^-6 WAD units of collateral; this makes the fixes almost always non-zero.
         uint256 debt = debt_seed;
