@@ -2,15 +2,12 @@
 
 pragma solidity >=0.6.12;
 
-import { DSTest } from "ds-test/test.sol";
+import "dss-test/DSSTest.sol";
+
 import { Cure } from "../Cure.sol";
 
-interface Hevm {
-    function warp(uint256) external;
-    function store(address,bytes32,bytes32) external;
-}
-
 contract SourceMock {
+
     uint256 public cure;
 
     constructor(uint256 cure_) public {
@@ -20,61 +17,84 @@ contract SourceMock {
     function update(uint256 cure_) external {
         cure = cure_;
     }
+
 }
 
-contract CureTest is DSTest {
-    Hevm hevm;
+contract CureTest is DSSTest {
+
     Cure cure;
 
-    bytes20 constant CHEAT_CODE =
-        bytes20(uint160(uint256(keccak256('hevm cheat code'))));
+    event Lift(address indexed src);
+    event Drop(address indexed src);
+    event Load(address indexed src);
+    event Cage();
 
-    function setUp() public {
-        hevm = Hevm(address(CHEAT_CODE));
+    function postSetup() internal virtual override {
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
         cure = new Cure();
     }
 
-    function testRelyDeny() public {
-        assertEq(cure.wards(address(123)), 0);
-        cure.rely(address(123));
-        assertEq(cure.wards(address(123)), 1);
-        cure.deny(address(123));
-        assertEq(cure.wards(address(123)), 0);
+    function testConstructor() public {
+        assertEq(cure.live(), 1);
+        assertEq(cure.wards(address(this)), 1);
     }
 
-    function testFailRely() public {
-        cure.deny(address(this));
-        cure.rely(address(123));
-    }
-
-    function testFailDeny() public {
-        cure.deny(address(this));
-        cure.deny(address(123));
+    function testAuth() public {
+        checkAuth(address(cure), "Cure");
     }
 
     function testFile() public {
-        assertEq(cure.wait(), 0);
-        cure.file("wait", 10);
-        assertEq(cure.wait(), 10);
+        checkFileUint(address(cure), "Cure", ["wait"]);
     }
 
-    function testFailFile() public {
+    function testAuthModifier() public {
         cure.deny(address(this));
-        cure.file("wait", 10);
+
+        bytes[] memory funcs = new bytes[](3);
+        funcs[0] = abi.encodeWithSelector(Cure.lift.selector, 0, 0, 0, 0);
+        funcs[1] = abi.encodeWithSelector(Cure.drop.selector, 0, 0, 0, 0);
+        funcs[2] = abi.encodeWithSelector(Cure.cage.selector, 0, 0, 0, 0);
+
+        for (uint256 i = 0; i < funcs.length; i++) {
+            assertRevert(address(cure), funcs[i], "Cure/not-authorized");
+        }
+    }
+
+    function testLive() public {
+        cure.cage();
+
+        bytes[] memory funcs = new bytes[](6);
+        funcs[0] = abi.encodeWithSelector(Cure.rely.selector, 0, 0, 0, 0);
+        funcs[1] = abi.encodeWithSelector(Cure.deny.selector, 0, 0, 0, 0);
+        funcs[2] = abi.encodeWithSelector(Cure.file.selector, 0, 0, 0, 0);
+        funcs[3] = abi.encodeWithSelector(Cure.lift.selector, 0, 0, 0, 0);
+        funcs[4] = abi.encodeWithSelector(Cure.drop.selector, 0, 0, 0, 0);
+        funcs[5] = abi.encodeWithSelector(Cure.cage.selector, 0, 0, 0, 0);
+
+        for (uint256 i = 0; i < funcs.length; i++) {
+            assertRevert(address(cure), funcs[i], "Cure/not-live");
+        }
     }
 
     function testAddSourceDelSource() public {
         assertEq(cure.tCount(), 0);
 
         address addr1 = address(new SourceMock(0));
+        vm.expectEmit(true, true, true, true);
+        emit Lift(addr1);
         cure.lift(addr1);
         assertEq(cure.tCount(), 1);
 
         address addr2 = address(new SourceMock(0));
+        vm.expectEmit(true, true, true, true);
+        emit Lift(addr2);
         cure.lift(addr2);
         assertEq(cure.tCount(), 2);
 
         address addr3 = address(new SourceMock(0));
+        vm.expectEmit(true, true, true, true);
+        emit Lift(addr3);
         cure.lift(addr3);
         assertEq(cure.tCount(), 3);
 
@@ -85,6 +105,8 @@ contract CureTest is DSTest {
         assertEq(cure.srcs(2), addr3);
         assertEq(cure.pos(addr3), 3);
 
+        vm.expectEmit(true, true, true, true);
+        emit Drop(addr3);
         cure.drop(addr3);
         assertEq(cure.tCount(), 2);
         assertEq(cure.srcs(0), addr1);
@@ -92,6 +114,8 @@ contract CureTest is DSTest {
         assertEq(cure.srcs(1), addr2);
         assertEq(cure.pos(addr2), 2);
 
+        vm.expectEmit(true, true, true, true);
+        emit Lift(addr3);
         cure.lift(addr3);
         assertEq(cure.tCount(), 3);
         assertEq(cure.srcs(0), addr1);
@@ -101,6 +125,8 @@ contract CureTest is DSTest {
         assertEq(cure.srcs(2), addr3);
         assertEq(cure.pos(addr3), 3);
 
+        vm.expectEmit(true, true, true, true);
+        emit Drop(addr1);
         cure.drop(addr1);
         assertEq(cure.tCount(), 2);
         assertEq(cure.srcs(0), addr3);
@@ -108,6 +134,8 @@ contract CureTest is DSTest {
         assertEq(cure.srcs(1), addr2);
         assertEq(cure.pos(addr2), 2);
 
+        vm.expectEmit(true, true, true, true);
+        emit Lift(addr1);
         cure.lift(addr1);
         assertEq(cure.tCount(), 3);
         assertEq(cure.srcs(0), addr3);
@@ -118,6 +146,8 @@ contract CureTest is DSTest {
         assertEq(cure.pos(addr1), 3);
 
         address addr4 = address(new SourceMock(0));
+        vm.expectEmit(true, true, true, true);
+        emit Lift(addr4);
         cure.lift(addr4);
         assertEq(cure.tCount(), 4);
         assertEq(cure.srcs(0), addr3);
@@ -129,6 +159,8 @@ contract CureTest is DSTest {
         assertEq(cure.srcs(3), addr4);
         assertEq(cure.pos(addr4), 4);
 
+        vm.expectEmit(true, true, true, true);
+        emit Drop(addr2);
         cure.drop(addr2);
         assertEq(cure.tCount(), 3);
         assertEq(cure.srcs(0), addr3);
@@ -139,23 +171,11 @@ contract CureTest is DSTest {
         assertEq(cure.pos(addr1), 3);
     }
 
-    function testFailAddSourceAuth() public {
-        cure.deny(address(this));
-        address addr = address(new SourceMock(0));
-        cure.lift(addr);
-    }
-
-    function testFailDelSourceAuth() public {
-        address addr = address(new SourceMock(0));
-        cure.lift(addr);
-        cure.deny(address(this));
-        cure.drop(addr);
-    }
-
-    function testFailDelSourceNonExisting() public {
+    function testDelSourceNonExisting() public {
         address addr1 = address(new SourceMock(0));
         cure.lift(addr1);
         address addr2 = address(new SourceMock(0));
+        vm.expectRevert("Cure/non-existing-source");
         cure.drop(addr2);
     }
 
@@ -227,11 +247,11 @@ contract CureTest is DSTest {
 
         cure.load(source1);
         cure.load(source2);
-        hevm.warp(block.timestamp + 10);
+        vm.warp(block.timestamp + 10);
         assertEq(cure.tell(), 45_000);
     }
 
-    function testFailWait() public {
+    function testWaitNotPassed() public {
         address source1 = address(new SourceMock(15_000));
         address source2 = address(new SourceMock(30_000));
         address source3 = address(new SourceMock(50_000));
@@ -245,7 +265,8 @@ contract CureTest is DSTest {
 
         cure.load(source1);
         cure.load(source2);
-        hevm.warp(block.timestamp + 9);
+        vm.warp(block.timestamp + 9);
+        vm.expectRevert("Cure/missing-load-and-time-not-passed");
         cure.tell();
     }
 
@@ -291,41 +312,21 @@ contract CureTest is DSTest {
         assertEq(cure.tell(), 2_000);
     }
 
-    function testFailLoadNotCaged() public {
+    function testLoadNotCaged() public {
         address source = address(new SourceMock(2_000));
         cure.lift(source);
 
+        vm.expectRevert("Cure/still-live");
         cure.load(source);
     }
 
-    function testFailLoadNotAdded() public {
+    function testLoadNotAdded() public {
         address source = address(new SourceMock(2_000));
 
         cure.cage();
 
+        vm.expectRevert("Cure/non-existing-source");
         cure.load(source);
     }
 
-    function testFailCagedRely() public {
-        cure.cage();
-        cure.rely(address(123));
-    }
-
-    function testFailCagedDeny() public {
-        cure.cage();
-        cure.deny(address(123));
-    }
-
-    function testFailCagedAddSource() public {
-        cure.cage();
-        address source = address(new SourceMock(0));
-        cure.lift(source);
-    }
-
-    function testFailCagedDelSource() public {
-        address source = address(new SourceMock(0));
-        cure.lift(source);
-        cure.cage();
-        cure.drop(source);
-    }
 }
