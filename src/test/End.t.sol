@@ -198,8 +198,7 @@ contract EndTest is DSSTest {
 
         vm.expectEmit(true, true, true, true);
         emit Rely(address(this));
-        end = new End();
-        end.file("vat", address(vat));
+        end = new End(address(vat));
         end.file("vow", address(vow));
         end.file("pot", address(pot));
         end.file("spot", address(spot));
@@ -215,6 +214,7 @@ contract EndTest is DSSTest {
     function testConstructor() public {
         assertEq(end.live(), 1);
         assertEq(end.wards(address(this)), 1);
+        assertEq(address(end.vat()), address(vat));
     }
 
     function testAuth() public {
@@ -223,7 +223,7 @@ contract EndTest is DSSTest {
 
     function testFile() public {
         checkFileUint(address(end), "End", ["wait"]);
-        checkFileAddress(address(end), "End", ["vat", "vow", "pot", "spot", "cure", "claim"]);
+        checkFileAddress(address(end), "End", ["vow", "pot", "spot", "cure", "claim"]);
     }
 
     function testAuthModifier() public {

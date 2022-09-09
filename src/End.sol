@@ -149,7 +149,7 @@ interface ClaimLike {
     type and claim token holders can now turn their claims into collateral. Each
     unit claim token can claim a fixed basket of collateral.
 
-    Claim token holders must first `pack` some dai into a `bag`. Once packed,
+    Claim token holders must first `pack` some claim tokens into a `bag`. Once packed,
     claims cannot be unpacked and is not transferrable. More claims can be
     added to a bag later.
 
@@ -160,7 +160,7 @@ interface ClaimLike {
     the more collateral can be released.
 
     8. `cash(ilk, wad)`:
-        - exchange some dai from your bag for gems from a specific ilk
+        - exchange claim tokens from your bag for gems from a specific ilk
         - the number of gems is limited by how big your bag is
 */
 
@@ -168,8 +168,8 @@ contract End {
     // --- Data ---
     mapping (address => uint256) public wards;
     
-    VatLike   public vat;   // CDP Engine
-    VowLike   public vow;   // Debt Engine
+    VatLike   public immutable vat; // CDP Engine
+    VowLike   public vow;           // Debt Engine
     PotLike   public pot;
     SpotLike  public spot;
     CureLike  public cure;
@@ -208,10 +208,11 @@ contract End {
     }
 
     // --- Init ---
-    constructor() {
+    constructor(address vat_) {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
 
+        vat = VatLike(vat_);
         live = 1;
     }
 
@@ -241,8 +242,7 @@ contract End {
 
     function file(bytes32 what, address data) external auth {
         require(live == 1, "End/not-live");
-        if (what == "vat")  vat = VatLike(data);
-        else if (what == "vow")   vow = VowLike(data);
+        if (what == "vow")   vow = VowLike(data);
         else if (what == "pot")   pot = PotLike(data);
         else if (what == "spot") spot = SpotLike(data);
         else if (what == "cure") cure = CureLike(data);
