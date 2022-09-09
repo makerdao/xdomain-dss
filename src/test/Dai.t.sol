@@ -54,6 +54,7 @@ contract DaiTest is DSSTest {
 
         vm.expectEmit(true, true, true, true);
         emit Transfer(address(0xBEEF), address(0), 0.9e18);
+        vm.prank(address(0xBEEF));
         token.burn(address(0xBEEF), 0.9e18);
 
         assertEq(token.totalSupply(), 1e18 - 0.9e18);
@@ -323,6 +324,7 @@ contract DaiTest is DSSTest {
 
         vm.expectEmit(true, true, true, true);
         emit Transfer(from, address(0), burnAmount);
+        vm.prank(from);
         token.burn(from, burnAmount);
 
         assertEq(token.totalSupply(), mintAmount - burnAmount);
