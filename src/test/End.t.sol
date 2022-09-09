@@ -58,19 +58,9 @@ contract Usr {
 contract MockVow {
 
     Vat     public vat;
-    uint256 public told;
 
     constructor(Vat _vat) {
         vat = _vat;
-    }
-
-    function grain() external view returns (uint256) {
-        vat.Line();
-        return 0;
-    }
-
-    function tell(uint256 value) external {
-        told = value;
     }
 
     function heal(uint256 amount) external {

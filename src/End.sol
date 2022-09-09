@@ -57,11 +57,6 @@ interface PotLike {
     function cage() external;
 }
 
-interface VowLike {
-    function grain() external view returns (uint256);
-    function tell(uint256 value) external;
-}
-
 interface ClipLike {
     function sales(uint256 id) external view returns (
         uint256 pos,
@@ -169,7 +164,7 @@ contract End {
     mapping (address => uint256) public wards;
     
     VatLike   public immutable vat; // CDP Engine
-    VowLike   public vow;           // Debt Engine
+    address   public vow;           // Debt Engine
     PotLike   public pot;
     SpotLike  public spot;
     CureLike  public cure;
@@ -242,7 +237,7 @@ contract End {
 
     function file(bytes32 what, address data) external auth {
         require(live == 1, "End/not-live");
-        if (what == "vow")   vow = VowLike(data);
+        if (what == "vow")   vow = data;
         else if (what == "pot")   pot = PotLike(data);
         else if (what == "spot") spot = SpotLike(data);
         else if (what == "cure") cure = CureLike(data);
@@ -289,7 +284,7 @@ contract End {
         gap[ilk] = gap[ilk] + (owe - wad);
 
         require(wad <= 2**255 && art <= 2**255, "End/overflow");
-        vat.grab(ilk, urn, address(this), address(vow), -int256(wad), -int256(art));
+        vat.grab(ilk, urn, address(this), vow, -int256(wad), -int256(art));
         emit Skim(ilk, urn, wad, art);
     }
 
@@ -298,14 +293,14 @@ contract End {
         (uint256 ink, uint256 art) = vat.urns(ilk, msg.sender);
         require(art == 0, "End/art-not-zero");
         require(ink <= 2**255, "End/overflow");
-        vat.grab(ilk, msg.sender, msg.sender, address(vow), -int256(ink), 0);
+        vat.grab(ilk, msg.sender, msg.sender, vow, -int256(ink), 0);
         emit Free(ilk, msg.sender, ink);
     }
 
     function thaw() external {
         require(live == 0, "End/still-live");
         require(debt == 0, "End/debt-not-zero");
-        require(vat.dai(address(vow)) == 0, "End/surplus-not-zero");
+        require(vat.dai(vow) == 0, "End/surplus-not-zero");
         require(block.timestamp >= when + wait, "End/wait-not-finished");
         debt = vat.debt() - cure.tell();
         emit Thaw();
@@ -322,7 +317,7 @@ contract End {
 
     function pack(uint256 wad) external {
         require(debt != 0, "End/debt-zero");
-        require(claim.transferFrom(msg.sender, address(vow), wad), "End/transfer-failed");
+        require(claim.transferFrom(msg.sender, vow, wad), "End/transfer-failed");
         bag[msg.sender] = bag[msg.sender] + wad;
         emit Pack(msg.sender, wad);
     }
