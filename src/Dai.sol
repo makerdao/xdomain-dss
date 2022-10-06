@@ -199,10 +199,10 @@ contract Dai {
     }
 
     // --- Approve by signature ---
-    
+
     function _isValidSignature(
         address signer,
-        bytes32 hash,
+        bytes32 digest,
         bytes memory signature
     ) internal view returns (bool) {
         if (signature.length == 65) {
@@ -214,17 +214,17 @@ contract Dai {
                 s := mload(add(signature, 0x40))
                 v := byte(0, mload(add(signature, 0x60)))
             }
-            if (signer == ecrecover(hash, v, r, s)) {
+            if (signer == ecrecover(digest, v, r, s)) {
                 return true;
             }
         }
 
         (bool success, bytes memory result) = signer.staticcall(
-            abi.encodeWithSelector(IERC1271.isValidSignature.selector, hash, signature)
+            abi.encodeWithSelector(IERC1271.isValidSignature.selector, digest, signature)
         );
         return (success &&
             result.length == 32 &&
-            abi.decode(result, (bytes32)) == bytes32(IERC1271.isValidSignature.selector));
+            abi.decode(result, (bytes4)) == IERC1271.isValidSignature.selector);
     }
 
     function permit(

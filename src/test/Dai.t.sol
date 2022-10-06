@@ -29,7 +29,7 @@ contract DaiTest is DSSTest {
     function invariantMetadata() public {
         assertEq(token.name(), "Dai Stablecoin");
         assertEq(token.symbol(), "DAI");
-        assertEq(token.version(), "2");
+        assertEq(token.version(), "3");
         assertEq(token.decimals(), 18);
     }
 
