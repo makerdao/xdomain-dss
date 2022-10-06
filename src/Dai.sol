@@ -33,7 +33,7 @@ contract Dai {
     // --- ERC20 Data ---
     string  public constant name     = "Dai Stablecoin";
     string  public constant symbol   = "DAI";
-    string  public constant version  = "2";
+    string  public constant version  = "3";
     uint8   public constant decimals = 18;
     uint256 public totalSupply;
 
