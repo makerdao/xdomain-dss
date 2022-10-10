@@ -2,4 +2,4 @@ all         :; forge build --use solc:0.8.13
 clean       :; forge clean
 test        :; ./test.sh $(match)
 certora-vat :; PATH=~/.solc-select/artifacts:${PATH} certoraRun --solc_map Vat=solc-0.8.13 --optimize_map Vat=200 --rule_sanity basic src/Vat.sol --verify Vat:certora/Vat.spec --settings -mediumTimeout=300 $(if $(short), --short_output,)$(if $(rule), --rule $(rule),)$(if $(multi), --multi_assert_check,)
-certora-dai :; PATH=~/.solc-select/artifacts:${PATH} certoraRun --solc_map Dai=solc-0.8.13,Auxiliar=solc-0.8.13 --optimize_map Dai=200,Auxiliar=0 --rule_sanity basic src/Dai.sol certora/Auxiliar.sol --verify Dai:certora/dai.spec --settings -mediumTimeout=300 $(if $(short), --short_output,)$(if $(rule), --rule $(rule),)$(if $(multi), --multi_assert_check,)
+certora-dai :; PATH=~/.solc-select/artifacts:${PATH} certoraRun --solc_map Dai=solc-0.8.13,Auxiliar=solc-0.8.13 --optimize_map Dai=200,Auxiliar=0 --rule_sanity basic src/Dai.sol certora/Auxiliar.sol --verify Dai:certora/Dai.spec --settings -mediumTimeout=300 $(if $(short), --short_output,)$(if $(rule), --rule $(rule),)$(if $(multi), --multi_assert_check,)
