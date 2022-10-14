@@ -1,5 +1,12 @@
 pragma solidity 0.8.13;
 
+interface IERC1271 {
+    function isValidSignature(
+        bytes32,
+        bytes memory
+    ) external view returns (bytes4);
+}
+
 contract Auxiliar {    
     function computeDigestForDai(
         bytes32 domain_separator,
@@ -32,5 +39,24 @@ contract Auxiliar {
         bytes32 s
     ) public pure returns (address signer) {
         signer = ecrecover(digest, v, r, s);
+    }
+
+    function signatureToVRS(bytes memory signature) public returns (uint8 v, bytes32 r, bytes32 s) {
+        if (signature.length == 65) {
+            assembly {
+                r := mload(add(signature, 0x20))
+                s := mload(add(signature, 0x40))
+                v := byte(0, mload(add(signature, 0x60)))
+            }
+        }
+    }
+
+    function validContractSigner(address signer, bytes32 digest, bytes memory signature) public returns (bool valid) {
+        (bool success, bytes memory result) = signer.staticcall(
+            abi.encodeWithSelector(IERC1271.isValidSignature.selector, digest, signature)
+        );
+        valid = success &&
+            result.length == 32 &&
+            abi.decode(result, (bytes4)) == IERC1271.isValidSignature.selector;
     }
 }

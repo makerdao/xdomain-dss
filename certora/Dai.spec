@@ -1,6 +1,7 @@
 // dai.spec
 
 using Auxiliar as aux
+using SignerMock as signer
 
 methods {
     wards(address) returns (uint256) envfree
@@ -17,6 +18,9 @@ methods {
     PERMIT_TYPEHASH() returns (bytes32) envfree
     aux.call_ecrecover(bytes32, uint8, bytes32, bytes32) returns (address) envfree
     aux.computeDigestForDai(bytes32, bytes32, address, address, uint256, uint256, uint256) returns (bytes32) envfree
+    aux.signatureToVRS(bytes) returns (uint8, bytes32, bytes32) envfree
+    aux.validContractSigner(address, bytes32, bytes) returns (bool) envfree
+    isValidSignature(bytes32, bytes) returns (bytes4) => DISPATCHER(true)
 }
 
 ghost balanceSum() returns mathint {
@@ -345,18 +349,65 @@ rule permit_revert(address owner, address spender, uint256 value, uint256 deadli
     env e;
 
     uint256 ownerNonce = nonces(owner);
-    address ownerRecover = aux.call_ecrecover(
-        aux.computeDigestForDai(DOMAIN_SEPARATOR(), PERMIT_TYPEHASH(), owner, spender, value, ownerNonce, deadline),
-        v,
-        r,
-        s
-    );
+    bytes32 digest = aux.computeDigestForDai(
+                        DOMAIN_SEPARATOR(),
+                        PERMIT_TYPEHASH(),
+                        owner,
+                        spender,
+                        value,
+                        ownerNonce,
+                        deadline
+                    );
+    address ownerRecover = aux.call_ecrecover(digest, v, r, s);
 
     permit@withrevert(e, owner, spender, value, deadline, v, r, s);
 
     bool revert1 = e.msg.value > 0;
     bool revert2 = e.block.timestamp > deadline;
     bool revert3 = owner == 0 || owner != ownerRecover;
+
+    assert(revert1 => lastReverted, "Sending ETH did not revert");
+    assert(revert2 => lastReverted, "Deadline exceed did not revert");
+    assert(revert3 => lastReverted, "Invalid permit did not revert");
+    assert(lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases");
+}
+
+rule permit2(address owner, address spender, uint256 value, uint256 deadline, bytes signature) {
+    env e;
+
+    permit(e, owner, spender, value, deadline, signature);
+
+    assert(allowance(owner, spender) == value, "permit did not set the allowance as expected");
+}
+
+// Verify revert rules on permit
+rule permit2_revert(address owner, address spender, uint256 value, uint256 deadline, bytes signature) {
+    env e;
+
+    require(owner == signer);
+
+    uint256 ownerNonce = nonces(owner);
+    uint8 v; bytes32 r; bytes32 s;
+    v, r, s = aux.signatureToVRS(signature);
+    bytes32 digest = aux.computeDigestForDai(
+                        DOMAIN_SEPARATOR(),
+                        PERMIT_TYPEHASH(),
+                        owner,
+                        spender,
+                        value,
+                        ownerNonce,
+                        deadline
+                    );
+    address ownerRecover = v == 0
+        ? 0
+        : aux.call_ecrecover(digest, v, r, s);
+    bool validContractSigner = aux.validContractSigner(owner, digest, signature);
+
+    permit@withrevert(e, owner, spender, value, deadline, signature);
+
+    bool revert1 = e.msg.value > 0;
+    bool revert2 = e.block.timestamp > deadline;
+    bool revert3 = owner == 0 || owner != ownerRecover || !validContractSigner;
 
     assert(revert1 => lastReverted, "Sending ETH did not revert");
     assert(revert2 => lastReverted, "Deadline exceed did not revert");
