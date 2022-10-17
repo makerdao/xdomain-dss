@@ -2,17 +2,10 @@
 
 pragma solidity ^0.8.13;
 
-interface IERC1271 {
-    function isValidSignature(
-        bytes32,
-        bytes memory
-    ) external view returns (bytes4);
-}
+contract SignerMock {
+    bytes32 sig;
 
-contract SignerMock is IERC1271 {
-    function isValidSignature(bytes32, bytes memory) external view returns (bytes4 sig) {
-        if (block.timestamp % 2 == 0) {
-            sig = IERC1271.isValidSignature.selector;
-        }
+    function isValidSignature(bytes32, bytes memory) external view returns (bytes32) {
+        return sig;
     }
 }

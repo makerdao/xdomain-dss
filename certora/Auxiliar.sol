@@ -51,12 +51,7 @@ contract Auxiliar {
         }
     }
 
-    function validContractSigner(address signer, bytes32 digest, bytes memory signature) public returns (bool valid) {
-        (bool success, bytes memory result) = signer.staticcall(
-            abi.encodeWithSelector(IERC1271.isValidSignature.selector, digest, signature)
-        );
-        valid = success &&
-            result.length == 32 &&
-            abi.decode(result, (bytes4)) == IERC1271.isValidSignature.selector;
+    function size(bytes memory data) public returns (uint256 size_) {
+        size_ = data.length;
     }
 }

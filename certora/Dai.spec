@@ -19,7 +19,7 @@ methods {
     aux.call_ecrecover(bytes32, uint8, bytes32, bytes32) returns (address) envfree
     aux.computeDigestForDai(bytes32, bytes32, address, address, uint256, uint256, uint256) returns (bytes32) envfree
     aux.signatureToVRS(bytes) returns (uint8, bytes32, bytes32) envfree
-    aux.validContractSigner(address, bytes32, bytes) returns (bool) envfree
+    aux.size(bytes) returns (uint256) envfree
     isValidSignature(bytes32, bytes) returns (bytes4) => DISPATCHER(true)
 }
 
@@ -336,7 +336,7 @@ rule burn_revert(address from, uint256 value) {
 }
 
 // Verify that allowance behaves correctly on permit
-rule permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) {
+rule permitVRS(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) {
     env e;
 
     permit(e, owner, spender, value, deadline, v, r, s);
@@ -345,7 +345,7 @@ rule permit(address owner, address spender, uint256 value, uint256 deadline, uin
 }
 
 // Verify revert rules on permit
-rule permit_revert(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) {
+rule permitVRS_revert(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) {
     env e;
 
     uint256 ownerNonce = nonces(owner);
@@ -364,15 +364,19 @@ rule permit_revert(address owner, address spender, uint256 value, uint256 deadli
 
     bool revert1 = e.msg.value > 0;
     bool revert2 = e.block.timestamp > deadline;
-    bool revert3 = owner == 0 || owner != ownerRecover;
+    bool revert3 = owner == 0;
+    bool revert4 = owner != ownerRecover;
 
     assert(revert1 => lastReverted, "Sending ETH did not revert");
     assert(revert2 => lastReverted, "Deadline exceed did not revert");
-    assert(revert3 => lastReverted, "Invalid permit did not revert");
-    assert(lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases");
+    assert(revert3 => lastReverted, "Owner == address(0) did not revert");
+    assert(revert4 => lastReverted, "Invalid permit did not revert");
+
+    assert(lastReverted => revert1 || revert2 || revert3 ||
+                           revert4, "Revert rules are not covering all the cases");
 }
 
-rule permit2(address owner, address spender, uint256 value, uint256 deadline, bytes signature) {
+rule permitSignature(address owner, address spender, uint256 value, uint256 deadline, bytes signature) {
     env e;
 
     permit(e, owner, spender, value, deadline, signature);
@@ -381,14 +385,10 @@ rule permit2(address owner, address spender, uint256 value, uint256 deadline, by
 }
 
 // Verify revert rules on permit
-rule permit2_revert(address owner, address spender, uint256 value, uint256 deadline, bytes signature) {
+rule permitSignature_revert(address owner, address spender, uint256 value, uint256 deadline, bytes signature) {
     env e;
 
-    require(owner == signer);
-
     uint256 ownerNonce = nonces(owner);
-    uint8 v; bytes32 r; bytes32 s;
-    v, r, s = aux.signatureToVRS(signature);
     bytes32 digest = aux.computeDigestForDai(
                         DOMAIN_SEPARATOR(),
                         PERMIT_TYPEHASH(),
@@ -398,19 +398,23 @@ rule permit2_revert(address owner, address spender, uint256 value, uint256 deadl
                         ownerNonce,
                         deadline
                     );
-    address ownerRecover = v == 0
-        ? 0
-        : aux.call_ecrecover(digest, v, r, s);
-    bool validContractSigner = aux.validContractSigner(owner, digest, signature);
+    uint8 v; bytes32 r; bytes32 s;
+    v, r, s = aux.signatureToVRS(signature);
+    address ownerRecover = aux.size(signature) == 65 ? aux.call_ecrecover(digest, v, r, s) : 0;
+    bytes32 returnedSig = owner == signer ? signer.isValidSignature(e, digest, signature) : 0;
 
     permit@withrevert(e, owner, spender, value, deadline, signature);
 
     bool revert1 = e.msg.value > 0;
     bool revert2 = e.block.timestamp > deadline;
-    bool revert3 = owner == 0 || owner != ownerRecover || !validContractSigner;
+    bool revert3 = owner == 0;
+    bool revert4 = owner != ownerRecover && returnedSig != 0x1626ba7e00000000000000000000000000000000000000000000000000000000;
 
     assert(revert1 => lastReverted, "Sending ETH did not revert");
     assert(revert2 => lastReverted, "Deadline exceed did not revert");
-    assert(revert3 => lastReverted, "Invalid permit did not revert");
-    assert(lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases");
+    assert(revert3 => lastReverted, "Owner == address(0) did not revert");
+    assert(revert4 => lastReverted, "Invalid permit did not revert");
+
+    assert(lastReverted => revert1 || revert2 || revert3 ||
+                           revert4, "Revert rules are not covering all the cases");
 }
