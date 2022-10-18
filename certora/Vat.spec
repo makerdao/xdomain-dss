@@ -16,6 +16,7 @@ methods {
     rate(bytes32) returns (uint256) envfree
     sin(address) returns (uint256) envfree
     spot(bytes32) returns (uint256) envfree
+    surf() returns (int256) envfree
     urns(bytes32, address) returns (uint256, uint256) envfree
     vice() returns (uint256) envfree
     wards(address) returns (uint256) envfree
@@ -962,6 +963,46 @@ rule suck_revert(address u, address v, uint256 rad) {
 
     assert(lastReverted => revert1 || revert2 || revert3 ||
                            revert4 || revert5 || revert6, "Revert rules are not covering all the cases");
+}
+
+// Verify that variables behave correctly on swell
+rule swell(address u, int256 rad) {
+    env e;
+
+    uint256 daiBefore = dai(u);
+    int256 surfBefore = surf();
+
+    swell(e, u, rad);
+
+    uint256 daiAfter = dai(u);
+    int256 surfAfter = surf();
+
+    assert(to_mathint(daiAfter) == to_mathint(daiBefore) + to_mathint(rad), "swell did not set dai as expected");
+    assert(to_mathint(surfAfter) == to_mathint(surfBefore) + to_mathint(rad), "suck did not set surf as expected");
+}
+
+// Verify revert rules on swell
+rule swell_revert(address u, int256 rad) {
+    env e;
+
+    uint256 ward = wards(e.msg.sender);
+    uint256 dai = dai(u);
+    int256 surf = surf();
+
+    swell@withrevert(e, u, rad);
+
+    bool revert1 = e.msg.value > 0;
+    bool revert2 = ward != 1;
+    bool revert3 = to_mathint(dai) + to_mathint(rad) < 0 || to_mathint(dai) + to_mathint(rad) > max_uint256;
+    bool revert4 = to_mathint(surf) + to_mathint(rad) > max_int256() || to_mathint(surf) + to_mathint(rad) < min_int256();
+
+    assert(revert1 => lastReverted, "revert1 failed");
+    assert(revert2 => lastReverted, "revert2 failed");
+    assert(revert3 => lastReverted, "revert3 failed");
+    assert(revert4 => lastReverted, "revert4 failed");
+
+    assert(lastReverted => revert1 || revert2 || revert3 ||
+                           revert4, "Revert rules are not covering all the cases");
 }
 
 // Verify that variables behave correctly on fold
