@@ -328,10 +328,11 @@ contract Vat {
     // --- Rates ---
     function fold(bytes32 i, address u, int256 rate_) external auth {
         require(live == 1, "Vat/not-live");
-        ilks[i].rate = _add(ilks[i].rate, rate_);
-        int256 rad   = _int256(ilks[i].Art) * rate_;
-        dai[u]       = _add(dai[u], rad);
-        debt         = _add(debt,   rad);
+        Ilk storage ilk = ilks[i];
+        ilk.rate    = _add(ilk.rate, rate_);
+        int256 rad  = _int256(ilk.Art) * rate_;
+        dai[u]      = _add(dai[u], rad);
+        debt        = _add(debt,   rad);
 
         emit Fold(i, u, rate_);
     }
