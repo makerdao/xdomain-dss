@@ -290,12 +290,13 @@ contract Vat {
     // --- CDP Confiscation ---
     function grab(bytes32 i, address u, address v, address w, int256 dink, int256 dart) external auth {
         Urn storage urn = urns[i][u];
+        Ilk storage ilk = ilks[i];
+
         urn.ink = _add(urn.ink, dink);
         urn.art = _add(urn.art, dart);
+        ilk.Art = _add(ilk.Art, dart);
 
-        ilks[i].Art = _add(ilks[i].Art, dart);
-
-        int256 dtab = _int256(ilks[i].rate) * dart;
+        int256 dtab = _int256(ilk.rate) * dart;
 
         gem[i][v] = _sub(gem[i][v], dink);
         sin[w]    = _sub(sin[w],    dtab);
