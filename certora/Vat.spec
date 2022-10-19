@@ -29,7 +29,6 @@ definition min_int256() returns mathint = -1 * 2^255;
 definition max_int256() returns mathint = 2^255 - 1;
 
 // Verify fallback always reverts
-// In this case is pretty important as we are filtering it out from some invariants/rules
 rule fallback_revert(method f) filtered { f -> f.isFallback } {
     env e;
 
@@ -39,7 +38,7 @@ rule fallback_revert(method f) filtered { f -> f.isFallback } {
     assert(lastReverted, "Fallback did not revert");
 }
 
-// Verify that wards behaves correctly on rely
+// Verify correct storage changes for non reverting rely
 rule rely(address usr) {
     env e;
 
@@ -120,7 +119,7 @@ rule rely_revert(address usr) {
     assert(lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases");
 }
 
-// Verify that wards behaves correctly on deny
+// Verify correct storage changes for non reverting deny
 rule deny(address usr) {
     env e;
 
@@ -201,7 +200,7 @@ rule deny_revert(address usr) {
     assert(lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases");
 }
 
-// Verify that rate behaves correctly on init
+// Verify correct storage changes for non reverting init
 rule init(bytes32 ilk) {
     env e;
 
@@ -291,7 +290,7 @@ rule init_revert(bytes32 ilk) {
     assert(lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases");
 }
 
-// Verify that Line behaves correctly on file
+// Verify correct storage changes for non reverting file
 rule file(bytes32 what, uint256 data) {
     env e;
 
@@ -370,7 +369,7 @@ rule file_revert(bytes32 what, uint256 data) {
                            revert4, "Revert rules are not covering all the cases");
 }
 
-// Verify that spot/line/dust behave correctly on file
+// Verify correct storage changes for non reverting file
 rule file_ilk(bytes32 ilk, bytes32 what, uint256 data) {
     env e;
 
@@ -414,31 +413,31 @@ rule file_ilk(bytes32 ilk, bytes32 what, uint256 data) {
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
 
-    assert(wardsAfter == wardsBefore, "file_ilk did not keep unchanged every wards[x]");
-    assert(canAfter == canBefore, "file_ilk did not keep unchanged every can[x][y]");
+    assert(wardsAfter == wardsBefore, "file did not keep unchanged every wards[x]");
+    assert(canAfter == canBefore, "file did not keep unchanged every can[x][y]");
     assert(ArtAfter == ArtBefore, "file did not keep unchanged ilks[ilk].Art");
     assert(rateAfter == rateBefore, "file did not keep unchanged ilks[ilk].rate");
-    assert(what == 0x73706f7400000000000000000000000000000000000000000000000000000000 => spotAfter == data, "file_ilk did not set ilks[ilk].spot");
-    assert(what != 0x73706f7400000000000000000000000000000000000000000000000000000000 => spotAfter == spotBefore, "file_ilk did not keep unchanged ilks[ilk].spot");
-    assert(what == 0x6c696e6500000000000000000000000000000000000000000000000000000000 => lineAfter == data, "file_ilk did not set ilks[ilk].line");
-    assert(what != 0x6c696e6500000000000000000000000000000000000000000000000000000000 => lineAfter == lineBefore, "file_ilk did not keep unchanged ilks[ilk].line");
-    assert(what == 0x6475737400000000000000000000000000000000000000000000000000000000 => dustAfter == data, "file_ilk did not set ilks[ilk].dust");
-    assert(what != 0x6475737400000000000000000000000000000000000000000000000000000000 => dustAfter == dustBefore, "file_ilk did not keep unchanged ilks[ilk].dust");
-    assert(ArtOtherAfter == ArtOtherBefore, "file_ilk did not keep unchanged the rest of ilks[x].Art");
-    assert(rateOtherAfter == rateOtherBefore, "file_ilk did not keep unchanged the rest of ilks[x].rate");
-    assert(spotOtherAfter == spotOtherBefore, "file_ilk did not keep unchanged the rest of ilks[x].spot");
-    assert(lineOtherAfter == lineOtherBefore, "file_ilk did not keep unchanged the rest of ilks[x].line");
-    assert(dustOtherAfter == dustOtherBefore, "file_ilk did not keep unchanged the rest of ilks[x].dust");
-    assert(inkAfter == inkBefore, "file_ilk did not keep unchanged every urns[x].ink");
-    assert(artAfter == artBefore, "file_ilk did not keep unchanged every urns[x].art");
-    assert(gemAfter == gemBefore, "file_ilk did not keep unchanged every gem[x][y]");
-    assert(daiAfter == daiBefore, "file_ilk did not keep unchanged every dai[x]");
-    assert(sinAfter == sinBefore, "file_ilk did not keep unchanged every sin[x]");
-    assert(debtAfter == debtBefore, "file_ilk did not keep unchanged debt");
-    assert(surfAfter == surfBefore, "file_ilk did not keep unchanged surf");
-    assert(viceAfter == viceBefore, "file_ilk did not keep unchanged vice");
-    assert(LineAfter == LineBefore, "file_ilk did not keep unchanged Line");
-    assert(liveAfter == liveBefore, "file_ilk did not keep unchanged live");
+    assert(what == 0x73706f7400000000000000000000000000000000000000000000000000000000 => spotAfter == data, "file did not set ilks[ilk].spot");
+    assert(what != 0x73706f7400000000000000000000000000000000000000000000000000000000 => spotAfter == spotBefore, "file did not keep unchanged ilks[ilk].spot");
+    assert(what == 0x6c696e6500000000000000000000000000000000000000000000000000000000 => lineAfter == data, "file did not set ilks[ilk].line");
+    assert(what != 0x6c696e6500000000000000000000000000000000000000000000000000000000 => lineAfter == lineBefore, "file did not keep unchanged ilks[ilk].line");
+    assert(what == 0x6475737400000000000000000000000000000000000000000000000000000000 => dustAfter == data, "file did not set ilks[ilk].dust");
+    assert(what != 0x6475737400000000000000000000000000000000000000000000000000000000 => dustAfter == dustBefore, "file did not keep unchanged ilks[ilk].dust");
+    assert(ArtOtherAfter == ArtOtherBefore, "file did not keep unchanged the rest of ilks[x].Art");
+    assert(rateOtherAfter == rateOtherBefore, "file did not keep unchanged the rest of ilks[x].rate");
+    assert(spotOtherAfter == spotOtherBefore, "file did not keep unchanged the rest of ilks[x].spot");
+    assert(lineOtherAfter == lineOtherBefore, "file did not keep unchanged the rest of ilks[x].line");
+    assert(dustOtherAfter == dustOtherBefore, "file did not keep unchanged the rest of ilks[x].dust");
+    assert(inkAfter == inkBefore, "file did not keep unchanged every urns[x].ink");
+    assert(artAfter == artBefore, "file did not keep unchanged every urns[x].art");
+    assert(gemAfter == gemBefore, "file did not keep unchanged every gem[x][y]");
+    assert(daiAfter == daiBefore, "file did not keep unchanged every dai[x]");
+    assert(sinAfter == sinBefore, "file did not keep unchanged every sin[x]");
+    assert(debtAfter == debtBefore, "file did not keep unchanged debt");
+    assert(surfAfter == surfBefore, "file did not keep unchanged surf");
+    assert(viceAfter == viceBefore, "file did not keep unchanged vice");
+    assert(LineAfter == LineBefore, "file did not keep unchanged Line");
+    assert(liveAfter == liveBefore, "file did not keep unchanged live");
 }
 
 // Verify revert rules on file
@@ -466,7 +465,7 @@ rule file_ilk_revert(bytes32 ilk, bytes32 what, uint256 data) {
                            revert4, "Revert rules are not covering all the cases");
 }
 
-// Verify that live behaves correctly on cage
+// Verify correct storage changes for non reverting cage
 rule cage() {
     env e;
 
@@ -560,7 +559,7 @@ rule urn_getters() {
     assert(art == art(ilk, urn), "art getter did not return urns.art");
 }
 
-// Verify that can behaves correctly on hope
+// Verify correct storage changes for non reverting hope
 rule hope(address usr) {
     env e;
 
@@ -634,7 +633,7 @@ rule hope_revert(address usr) {
     assert(lastReverted => revert1, "Revert rules are not covering all the cases");
 }
 
-// Verify that can behaves correctly on nope
+// Verify correct storage changes for non reverting nope
 rule nope(address usr) {
     env e;
 
@@ -708,7 +707,7 @@ rule nope_revert(address usr) {
     assert(lastReverted => revert1, "Revert rules are not covering all the cases");
 }
 
-// Verify that gem behaves correctly on slip
+// Verify correct storage changes for non reverting slip
 rule slip(bytes32 ilk, address usr, int256 wad) {
     env e;
 
@@ -790,7 +789,7 @@ rule slip_revert(bytes32 ilk, address usr, int256 wad) {
     assert(lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases");
 }
 
-// Verify that gems behave correctly on flux
+// Verify correct storage changes for non reverting flux
 rule flux(bytes32 ilk, address src, address dst, uint256 wad) {
     env e;
 
@@ -880,7 +879,7 @@ rule flux_revert(bytes32 ilk, address src, address dst, uint256 wad) {
                            revert4, "Revert rules are not covering all the cases");
 }
 
-// Verify that dais behave correctly on move
+// Verify correct storage changes for non reverting move
 rule move(address src, address dst, uint256 rad) {
     env e;
 
@@ -970,7 +969,7 @@ rule move_revert(address src, address dst, uint256 rad) {
                            revert4, "Revert rules are not covering all the cases");
 }
 
-// Verify that variables behave correctly on frob
+// Verify correct storage changes for non reverting frob
 rule frob(bytes32 i, address u, address v, address w, int256 dink, int256 dart) {
     env e;
 
@@ -1136,7 +1135,7 @@ rule frob_revert(bytes32 i, address u, address v, address w, int256 dink, int256
                            revert19 || revert20, "Revert rules are not covering all the cases");
 }
 
-// Verify that variables behave correctly on fork
+// Verify correct storage changes for non reverting fork
 rule fork(bytes32 ilk, address src, address dst, int256 dink, int256 dart) {
     env e;
 
@@ -1202,7 +1201,7 @@ rule fork(bytes32 ilk, address src, address dst, int256 dink, int256 dart) {
     assert(gemAfter == gemBefore, "fork did not keep unchanged every gem[x][y]");
     assert(daiAfter == daiBefore, "fork did not keep unchanged every dai[x]");
     assert(sinAfter == sinBefore, "fork did not keep unchanged every sin[x]");
-    assert(debtAfter == debtBefore, "fork did not keep unchanged debt as expected");
+    assert(debtAfter == debtBefore, "fork did not keep unchanged debt");
     assert(surfAfter == surfBefore, "fork did not keep unchanged surf");
     assert(viceAfter == viceBefore, "fork did not keep unchanged vice");
     assert(LineAfter == LineBefore, "fork did not keep unchanged Line");
@@ -1271,7 +1270,7 @@ rule fork_revert(bytes32 ilk, address src, address dst, int256 dink, int256 dart
                            revert13 || revert14, "Revert rules are not covering all the cases");
 }
 
-// Verify that variables behave correctly on grab
+// Verify correct storage changes for non reverting grab
 rule grab(bytes32 i, address u, address v, address w, int256 dink, int256 dart) {
     env e;
 
@@ -1403,7 +1402,7 @@ rule grab_revert(bytes32 i, address u, address v, address w, int256 dink, int256
                            revert10, "Revert rules are not covering all the cases");
 }
 
-// Verify that variables behave correctly on heal
+// Verify correct storage changes for non reverting heal
 rule heal(uint256 rad) {
     env e;
 
@@ -1495,7 +1494,7 @@ rule heal_revert(uint256 rad) {
                            revert4 || revert5, "Revert rules are not covering all the cases");
 }
 
-// Verify that variables behave correctly on suck
+// Verify correct storage changes for non reverting suck
 rule suck(address u, address v, uint256 rad) {
     env e;
 
@@ -1593,7 +1592,7 @@ rule suck_revert(address u, address v, uint256 rad) {
                            revert4 || revert5 || revert6, "Revert rules are not covering all the cases");
 }
 
-// Verify that variables behave correctly on swell
+// Verify correct storage changes for non reverting swell
 rule swell(address u, int256 rad) {
     env e;
 
@@ -1679,7 +1678,7 @@ rule swell_revert(address u, int256 rad) {
                            revert4, "Revert rules are not covering all the cases");
 }
 
-// Verify that variables behave correctly on fold
+// Verify correct storage changes for non reverting fold
 rule fold(bytes32 i, address u, int256 rate_) {
     env e;
 
