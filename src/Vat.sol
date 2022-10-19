@@ -257,40 +257,32 @@ contract Vat {
 
     // --- CDP Fungibility ---
     function fork(bytes32 ilk, address src, address dst, int256 dink, int256 dart) external {
-        Urn memory u = urns[ilk][src];
-        Urn memory v = urns[ilk][dst];
-        uint256 rate_ = ilks[ilk].rate;
-        uint256 spot_ = ilks[ilk].spot;
-        uint256 dust_ = ilks[ilk].dust;
+        Urn storage u = urns[ilk][src];
+        Urn storage v = urns[ilk][dst];
+        Ilk storage i = ilks[ilk];
 
-        u.ink = _sub(u.ink, dink);
-        u.art = _sub(u.art, dart);
-        if (src == dst) {
-            u.ink = _add(u.ink, dink);
-            u.art = _add(u.art, dart);
-        } else {
-            v.ink = _add(v.ink, dink);
-            v.art = _add(v.art, dart);
-        }
+        uint256 rate_ = i.rate;
+        uint256 spot_ = i.spot;
 
-        uint256 utab = u.art * rate_;
-        uint256 vtab = v.art * rate_;
+        uint256 uink = _sub(u.ink, dink);
+        u.ink = uink;
+        uint256 uart = _sub(u.art, dart);
+        u.art = uart;
+        uint256 vink = _add(v.ink, dink);
+        v.ink = vink;
+        uint256 vart = _add(v.art, dart);
+        v.art = vart;
 
         // both sides consent
         require(both(wish(src, msg.sender), wish(dst, msg.sender)), "Vat/not-allowed");
 
         // both sides safe
-        require(utab <= u.ink * spot_, "Vat/not-safe-src");
-        require(vtab <= v.ink * spot_, "Vat/not-safe-dst");
+        require(uart * rate_ <= uink * spot_, "Vat/not-safe-src");
+        require(vart * rate_ <= vink * spot_, "Vat/not-safe-dst");
 
         // both sides non-dusty
-        require(either(utab >= dust_, u.art == 0), "Vat/dust-src");
-        require(either(vtab >= dust_, v.art == 0), "Vat/dust-dst");
-
-        if (src != dst) {
-            urns[ilk][src] = u;
-            urns[ilk][dst] = v;
-        }
+        require(either(uart * rate_ >= i.dust, uart == 0), "Vat/dust-src");
+        require(either(vart * rate_ >= i.dust, vart == 0), "Vat/dust-dst");
 
         emit Fork(ilk, src, dst, dink, dart);
     }
