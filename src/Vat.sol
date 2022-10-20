@@ -227,9 +227,9 @@ contract Vat {
         uint256 Art_  = _add(ilks[i].Art, dart);
         int256  dtab  = _int256(rate_) * dart;
         uint256 debt_ = _add(debt, dtab);
+
         // either debt has decreased, or debt ceilings are not exceeded
         require(either(dart <= 0, both(Art_ * rate_ <= ilks[i].line, debt_ <= Line)), "Vat/ceiling-exceeded");
-
         uint256 tab = rate_ * urn.art;
         // urn is either less risky than before, or it is safe
         require(either(both(dart <= 0, dink >= 0), tab <= urn.ink * ilks[i].spot), "Vat/not-safe");
@@ -244,13 +244,12 @@ contract Vat {
         // urn has no debt, or a non-dusty amount
         require(either(urn.art == 0, tab >= ilks[i].dust), "Vat/dust");
 
-        gem[i][v] = _sub(gem[i][v], dink);
-        dai[w]    = _add(dai[w],    dtab);
-
-        debt = debt_;
-
+        // update storage values
+        gem[i][v]   = _sub(gem[i][v], dink);
+        dai[w]      = _add(dai[w],    dtab);
         urns[i][u]  = urn;
         ilks[i].Art = Art_;
+        debt        = debt_;
 
         emit Frob(i, u, v, w, dink, dart);
     }
