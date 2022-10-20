@@ -269,6 +269,11 @@ contract Vat {
         uint256 vink = v.ink = _add(v.ink, dink);
         uint256 vart = v.art = _add(v.art, dart);
 
+        if (src == dst) {
+            uink = vink;
+            uart = vart;
+        }
+
         // both sides consent
         require(both(wish(src, msg.sender), wish(dst, msg.sender)), "Vat/not-allowed");
 
