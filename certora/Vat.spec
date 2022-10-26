@@ -1064,7 +1064,7 @@ rule frob_revert(bytes32 i, address u, address v, address w, int256 dink, int256
     bool revert15 = (dart > 0 || dink < 0) && !wishU;
     bool revert16 = dink > 0 && !wishV;
     bool revert17 = dart < 0 && !wishW;
-    bool revert18 = artFinal > 0 && rate * artFinal < dust;
+    bool revert18 = artFinal > 0 && (dink < 0 || dart != 0) && rate * artFinal < dust;
     bool revert19 = to_mathint(gem) - to_mathint(dink) < 0 || to_mathint(gem) - to_mathint(dink) > max_uint256;
     bool revert20 = to_mathint(dai) + to_mathint(rate) * to_mathint(dart) < 0 || to_mathint(dai) + to_mathint(rate) * to_mathint(dart) > max_uint256;
 
