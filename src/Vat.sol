@@ -216,7 +216,9 @@ contract Vat {
         // system is live
         require(live == 1, "Vat/not-live");
 
-        uint256 rate_ = ilks[i].rate;
+        Ilk memory ilk = ilks[i];
+
+        uint256 rate_ = ilk.rate;
         // ilk has been initialised
         require(rate_ != 0, "Vat/ilk-not-init");
 
@@ -224,15 +226,15 @@ contract Vat {
         urn.ink = _add(urn.ink, dink);
         urn.art = _add(urn.art, dart);
 
-        uint256 Art_  = _add(ilks[i].Art, dart);
+        uint256 Art_  = _add(ilk.Art, dart);
         int256  dtab  = _int256(rate_) * dart;
         uint256 debt_ = _add(debt, dtab);
 
         // either debt has decreased, or debt ceilings are not exceeded
-        require(either(dart <= 0, both(Art_ * rate_ <= ilks[i].line, debt_ <= Line)), "Vat/ceiling-exceeded");
+        require(either(dart <= 0, both(Art_ * rate_ <= ilk.line, debt_ <= Line)), "Vat/ceiling-exceeded");
         uint256 tab = rate_ * urn.art;
         // urn is either less risky than before, or it is safe
-        require(either(both(dart <= 0, dink >= 0), tab <= urn.ink * ilks[i].spot), "Vat/not-safe");
+        require(either(both(dart <= 0, dink >= 0), tab <= urn.ink * ilk.spot), "Vat/not-safe");
 
         // urn is either more safe, or the owner consents
         require(either(both(dart <= 0, dink >= 0), wish(u, msg.sender)), "Vat/not-allowed-u");
@@ -241,8 +243,8 @@ contract Vat {
         // debt dst consents
         require(either(dart >= 0, wish(w, msg.sender)), "Vat/not-allowed-w");
 
-        // urn has no debt, or a non-dusty amount
-        require(either(urn.art == 0, tab >= ilks[i].dust), "Vat/dust");
+        // urn has no debt, or urn is just adding collateral or a non-dusty amount
+        require(either(urn.art == 0, either(both(dink >= 0, dart == 0), tab >= ilk.dust)), "Vat/dust");
 
         // update storage values
         gem[i][v]   = _sub(gem[i][v], dink);

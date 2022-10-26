@@ -497,6 +497,21 @@ contract VatTest is DSSTest {
     function testFrobDusty() public setupCdpOps {
         vm.expectRevert("Vat/dust");
         usr1.frob(ILK, ausr1, ausr1, ausr1, int256(9 * WAD), int256(9 * WAD));
+
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(10 * WAD), int256(10 * WAD));
+
+        vm.expectRevert("Vat/dust");
+        usr1.frob(ILK, ausr1, ausr1, ausr1, -int256(1), -int256(1));
+
+        vm.expectRevert("Vat/dust");
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(1), -int256(1));
+
+        vat.file(ILK, "dust", 11 * RAD);
+
+        vm.expectRevert("Vat/dust");
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(1), int256(1));
+
+        usr1.frob(ILK, ausr1, ausr1, ausr1, int256(1), int256(0));
     }
 
     function testFrobOther() public setupCdpOps {
