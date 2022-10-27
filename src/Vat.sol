@@ -242,7 +242,7 @@ contract Vat {
         // debt dst consents
         require(either(dart >= 0, wish(w, msg.sender)), "Vat/not-allowed-w");
 
-        // urn has no debt, or urn is just adding collateral or a non-dusty amount
+        // urn has no debt, or urn is just adding collateral, or has a non-dusty amount
         require(either(urn.art == 0, either(both(dink >= 0, dart == 0), tab >= ilk.dust)), "Vat/dust");
 
         // update storage values
