@@ -1,8 +1,12 @@
+pragma solidity ^0.8.13;
+
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-// Copyright (C) 2017, 2018, 2019 dbrock, rain, mrchico
-// Copyright (C) 2022 Dai Foundation
+/// ClaimToken.sol -- Claim token
 
+// Copyright (C) 2017, 2018, 2019 dbrock, rain, mrchico
+// Copyright (C) 2021-2022 Dai Foundation
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -17,6 +21,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pragma solidity ^0.8.13;
+
+interface IERC1271 {
+    function isValidSignature(
+        bytes32,
+        bytes memory
+    ) external view returns (bytes4);
+}
 
 contract ClaimToken {
     mapping (address => uint256) public wards;
@@ -170,7 +181,7 @@ contract ClaimToken {
         uint256 balance = balanceOf[from];
         require(balance >= value, "ClaimToken/insufficient-balance");
 
-        if (from != msg.sender && wards[msg.sender] != 1) {
+        if (from != msg.sender) {
             uint256 allowed = allowance[from][msg.sender];
             if (allowed != type(uint256).max) {
                 require(allowed >= value, "ClaimToken/insufficient-allowance");
@@ -190,8 +201,43 @@ contract ClaimToken {
     }
 
     // --- Approve by signature ---
-    function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external {
+
+    function _isValidSignature(
+        address signer,
+        bytes32 digest,
+        bytes memory signature
+    ) internal view returns (bool) {
+        if (signature.length == 65) {
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
+            assembly {
+                r := mload(add(signature, 0x20))
+                s := mload(add(signature, 0x40))
+                v := byte(0, mload(add(signature, 0x60)))
+            }
+            if (signer == ecrecover(digest, v, r, s)) {
+                return true;
+            }
+        }
+
+        (bool success, bytes memory result) = signer.staticcall(
+            abi.encodeWithSelector(IERC1271.isValidSignature.selector, digest, signature)
+        );
+        return (success &&
+            result.length == 32 &&
+            abi.decode(result, (bytes4)) == IERC1271.isValidSignature.selector);
+    }
+
+    function permit(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        bytes memory signature
+    ) public {
         require(block.timestamp <= deadline, "ClaimToken/permit-expired");
+        require(owner != address(0), "ClaimToken/invalid-owner");
 
         uint256 nonce;
         unchecked { nonce = nonces[owner]++; }
@@ -210,9 +256,21 @@ contract ClaimToken {
                 ))
             ));
 
-        require(owner != address(0) && owner == ecrecover(digest, v, r, s), "ClaimToken/invalid-permit");
+        require(_isValidSignature(owner, digest, signature), "ClaimToken/invalid-permit");
 
         allowance[owner][spender] = value;
         emit Approval(owner, spender, value);
+    }
+
+    function permit(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        permit(owner, spender, value, deadline, abi.encodePacked(r, s, v));
     }
 }

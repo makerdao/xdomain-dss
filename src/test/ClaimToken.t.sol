@@ -4,9 +4,40 @@ pragma solidity ^0.8.13;
 
 import "dss-test/DSSTest.sol";
 
-import { ClaimToken } from "../ClaimToken.sol";
+import { ClaimToken, IERC1271 } from "../ClaimToken.sol";
 
-contract ERC20Test is DSSTest {
+contract MockMultisig is IERC1271 {
+    address public signer1;
+    address public signer2;
+
+    constructor(address signer1_, address signer2_) {
+        signer1 = signer1_;
+        signer2 = signer2_;
+    }
+
+    function isValidSignature(bytes32 digest, bytes memory signature) external view returns (bytes4 sig) {
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            r := mload(add(signature, 0x20))
+            s := mload(add(signature, 0x40))
+            v := byte(0, mload(add(signature, 0x60)))
+        }
+        if (signer1 == ecrecover(digest, v, r, s)) {
+            assembly {
+                r := mload(add(signature, 0x80))
+                s := mload(add(signature, 0xA0))
+                v := byte(0, mload(add(signature, 0xC0)))
+            }
+            if (signer2 == ecrecover(digest, v, r, s)) {
+                sig = IERC1271.isValidSignature.selector;
+            }
+        }
+    }
+}
+
+contract ClaimTokenTest is DSSTest {
 
     ClaimToken token;
 
@@ -20,7 +51,7 @@ contract ERC20Test is DSSTest {
         token = new ClaimToken();
     }
 
-    function testRelyDeny() public {
+    function testAuth() public {
         checkAuth(address(token), "ClaimToken");
     }
 
@@ -51,6 +82,7 @@ contract ERC20Test is DSSTest {
 
         vm.expectEmit(true, true, true, true);
         emit Transfer(address(0xBEEF), address(0), 0.9e45);
+        vm.prank(address(0xBEEF));
         token.burn(address(0xBEEF), 0.9e45);
 
         assertEq(token.totalSupply(), 1e45 - 0.9e45);
@@ -179,6 +211,80 @@ contract ERC20Test is DSSTest {
 
         assertEq(token.allowance(owner, address(0xCAFE)), 1e45);
         assertEq(token.nonces(owner), 1);
+    }
+
+    function testPermitContract() public {
+        uint256 privateKey1 = 0xBEEF;
+        address signer1 = vm.addr(privateKey1);
+        uint256 privateKey2 = 0xBEEE;
+        address signer2 = vm.addr(privateKey2);
+
+        address mockMultisig = address(new MockMultisig(signer1, signer2));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            uint256(privateKey1),
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token.DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, mockMultisig, address(0xCAFE), 1e45, 0, block.timestamp))
+                )
+            )
+        );
+
+        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(
+            uint256(privateKey2),
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token.DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, mockMultisig, address(0xCAFE), 1e45, 0, block.timestamp))
+                )
+            )
+        );
+
+        bytes memory signature = abi.encode(r, s, bytes32(uint256(v) << 248), r2, s2, bytes32(uint256(v2) << 248));
+        vm.expectEmit(true, true, true, true);
+        emit Approval(mockMultisig, address(0xCAFE), 1e45);
+        token.permit(mockMultisig, address(0xCAFE), 1e45, block.timestamp, signature);
+
+        assertEq(token.allowance(mockMultisig, address(0xCAFE)), 1e45);
+        assertEq(token.nonces(mockMultisig), 1);
+    }
+
+    function testPermitContractInvalidSignature() public {
+        uint256 privateKey1 = 0xBEEF;
+        address signer1 = vm.addr(privateKey1);
+        uint256 privateKey2 = 0xBEEE;
+        address signer2 = vm.addr(privateKey2);
+
+        address mockMultisig = address(new MockMultisig(signer1, signer2));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            uint256(privateKey1),
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token.DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, mockMultisig, address(0xCAFE), 1e45, 0, block.timestamp))
+                )
+            )
+        );
+
+        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(
+            uint256(0xCEEE),
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token.DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, mockMultisig, address(0xCAFE), 1e45, 0, block.timestamp))
+                )
+            )
+        );
+
+        bytes memory signature = abi.encode(r, s, bytes32(uint256(v) << 248), r2, s2, bytes32(uint256(v2) << 248));
+        vm.expectRevert("ClaimToken/invalid-permit");
+        token.permit(mockMultisig, address(0xCAFE), 1e45, block.timestamp, signature);
     }
 
     function testTransferInsufficientBalance() public {
@@ -320,6 +426,7 @@ contract ERC20Test is DSSTest {
 
         vm.expectEmit(true, true, true, true);
         emit Transfer(from, address(0), burnAmount);
+        vm.prank(from);
         token.burn(from, burnAmount);
 
         assertEq(token.totalSupply(), mintAmount - burnAmount);
