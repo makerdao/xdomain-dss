@@ -218,23 +218,23 @@ contract Vat {
         // system is live
         require(live == 1, "Vat/not-live");
 
-        Urn memory urn = urns[i][u];
-        Ilk memory ilk = ilks[i];
+        uint256 rate_ = ilks[i].rate;
         // ilk has been initialised
-        require(ilk.rate != 0, "Vat/ilk-not-init");
+        require(rate_ != 0, "Vat/ilk-not-init");
 
+        Urn memory urn = urns[i][u];
         urn.ink = _add(urn.ink, dink);
         urn.art = _add(urn.art, dart);
-        ilk.Art = _add(ilk.Art, dart);
 
-        int256 dtab = _int256(ilk.rate) * dart;
-        uint256 tab = ilk.rate * urn.art;
-        debt     = _add(debt, dtab);
+        uint256 Art_  = _add(ilks[i].Art, dart);
+        int256  dtab  = _int256(rate_) * dart;
+        uint256 debt_ = _add(debt, dtab);
 
         // either debt has decreased, or debt ceilings are not exceeded
-        require(either(dart <= 0, both(ilk.Art * ilk.rate <= ilk.line, debt <= Line)), "Vat/ceiling-exceeded");
+        require(either(dart <= 0, both(Art_ * rate_ <= ilks[i].line, debt_ <= Line)), "Vat/ceiling-exceeded");
+        uint256 tab = rate_ * urn.art;
         // urn is either less risky than before, or it is safe
-        require(either(both(dart <= 0, dink >= 0), tab <= urn.ink * ilk.spot), "Vat/not-safe");
+        require(either(both(dart <= 0, dink >= 0), tab <= urn.ink * ilks[i].spot), "Vat/not-safe");
 
         // urn is either more safe, or the owner consents
         require(either(both(dart <= 0, dink >= 0), wish(u, msg.sender)), "Vat/not-allowed-u");
@@ -244,13 +244,14 @@ contract Vat {
         require(either(dart >= 0, wish(w, msg.sender)), "Vat/not-allowed-w");
 
         // urn has no debt, or a non-dusty amount
-        require(either(urn.art == 0, tab >= ilk.dust), "Vat/dust");
+        require(either(urn.art == 0, tab >= ilks[i].dust), "Vat/dust");
 
-        gem[i][v] = _sub(gem[i][v], dink);
-        dai[w]    = _add(dai[w],    dtab);
-
-        urns[i][u] = urn;
-        ilks[i]    = ilk;
+        // update storage values
+        gem[i][v]   = _sub(gem[i][v], dink);
+        dai[w]      = _add(dai[w],    dtab);
+        urns[i][u]  = urn;
+        ilks[i].Art = Art_;
+        debt        = debt_;
 
         emit Frob(i, u, v, w, dink, dart);
     }
