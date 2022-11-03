@@ -3,7 +3,6 @@
 pragma solidity ^0.8.13;
 
 import "dss-test/DSSTest.sol";
-import "ds-value/value.sol";
 
 import {MockToken} from './mocks/Token.sol';
 
@@ -14,6 +13,27 @@ import {End}        from '../End.sol';
 import {Spotter}    from '../Spotter.sol';
 import {Cure}       from '../Cure.sol';
 import {ClaimToken} from '../ClaimToken.sol';
+
+contract DSValue {
+    bool    has;
+    bytes32 val;
+    function peek() public view returns (bytes32, bool) {
+        return (val,has);
+    }
+    function read() public view returns (bytes32) {
+        bytes32 wut; bool haz;
+        (wut, haz) = peek();
+        require(haz, "haz-not");
+        return wut;
+    }
+    function poke(bytes32 wut) public {
+        val = wut;
+        has = true;
+    }
+    function void() public {  // unset the value
+        has = false;
+    }
+}
 
 contract Usr {
 
