@@ -10,7 +10,7 @@ contract SourceMock {
 
     uint256 public cure;
 
-    constructor(uint256 cure_) public {
+    constructor(uint256 cure_) {
         cure = cure_;
     }
 
