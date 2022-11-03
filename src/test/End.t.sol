@@ -7,23 +7,24 @@ import "ds-value/value.sol";
 
 import {MockToken} from './mocks/Token.sol';
 
-import {Vat}     from '../Vat.sol';
-import {Pot}     from '../Pot.sol';
-import {GemJoin} from '../GemJoin.sol';
-import {End}     from '../End.sol';
-import {Spotter} from '../Spotter.sol';
-import {Cure}    from '../Cure.sol';
+import {Vat}        from '../Vat.sol';
+import {Pot}        from '../Pot.sol';
+import {GemJoin}    from '../GemJoin.sol';
+import {End}        from '../End.sol';
+import {Spotter}    from '../Spotter.sol';
+import {Cure}       from '../Cure.sol';
+import {ClaimToken} from '../ClaimToken.sol';
 
 contract Usr {
 
-    Vat     public vat;
-    End     public end;
-    MockToken public claimToken;
+    Vat        public vat;
+    End        public end;
+    ClaimToken public claimToken;
 
     constructor(Vat vat_, End end_) {
         vat  = vat_;
         end  = end_;
-        claimToken = MockToken(address(end.claim()));
+        claimToken = ClaimToken(address(end.claim()));
     }
     function frob(bytes32 ilk, address u, address v, address w, int dink, int dart) public {
         vat.frob(ilk, u, v, w, dink, dart);
@@ -43,8 +44,8 @@ contract Usr {
     function free(bytes32 ilk) public {
         end.free(ilk);
     }
-    function pack(uint256 rad) public {
-        end.pack(rad);
+    function pack(uint256 wad) public {
+        end.pack(wad);
     }
     function cash(bytes32 ilk, uint256 wad) public {
         end.cash(ilk, wad);
@@ -77,7 +78,7 @@ contract EndTest is DSSTest {
     Pot         pot;
     Spotter     spot;
     Cure        cure;
-    MockToken   claimToken;
+    ClaimToken  claimToken;
 
     event Cage();
     event Cage(bytes32 indexed ilk);
@@ -172,7 +173,7 @@ contract EndTest is DSSTest {
         vm.warp(604411200);
 
         vat = new Vat();
-        claimToken = new MockToken('CLAIM');
+        claimToken = new ClaimToken();
 
         vow = new MockVow(vat);
 
@@ -199,6 +200,7 @@ contract EndTest is DSSTest {
         spot.rely(address(end));
         pot.rely(address(end));
         cure.rely(address(end));
+        claimToken.rely(address(end));
     }
 
     function testConstructor() public {
@@ -325,14 +327,17 @@ contract EndTest is DSSTest {
         vm.expectEmit(true, true, true, true);
         emit Thaw();
         end.thaw();
+        assertEq(end.debt(), rad(15 ether));
+        assertEq(claimToken.totalSupply(), rad(15 ether));
+        assertEq(claimToken.balanceOf(address(end)), rad(15 ether));
         vm.expectEmit(true, true, true, true);
         emit Flow("gold");
         end.flow("gold");
         assertTrue(end.fix("gold") != 0);
 
         // dai redemption
-        claimToken.mint(address(ali), 15 ether);
-        ali.approveClaim(address(end), 15 ether);
+        claimToken.mint(address(ali), rad(15 ether));
+        ali.approveClaim(address(end), rad(15 ether));
         vm.expectEmit(true, true, true, true);
         emit Pack(address(ali), 15 ether);
         ali.pack(15 ether);
@@ -341,7 +346,7 @@ contract EndTest is DSSTest {
         assertEq(vat.debt(), rad(15 ether));
         assertEq(vat.vice(), rad(15 ether));
         assertEq(vat.sin(address(vow)), rad(15 ether));
-        assertEq(claimToken.balanceOf(address(vow)), 15 ether);
+        assertEq(claimToken.balanceOf(address(ali)), 0);
 
         vm.expectEmit(true, true, true, true);
         emit Cash("gold", address(ali), 15 ether);
@@ -410,15 +415,15 @@ contract EndTest is DSSTest {
         assertTrue(end.fix("gold") != 0);
 
         // first dai redemption
-        claimToken.mint(address(ali), 15 ether);
-        ali.approveClaim(address(end), 15 ether);
+        claimToken.mint(address(ali), rad(15 ether));
+        ali.approveClaim(address(end), rad(15 ether));
         ali.pack(15 ether);
 
         // global checks:
         assertEq(vat.debt(), rad(18 ether));
         assertEq(vat.vice(), rad(18 ether));
         assertEq(vat.sin(address(vow)), rad(18 ether));
-        assertEq(claimToken.balanceOf(address(vow)), 15 ether);
+        assertEq(claimToken.balanceOf(address(ali)), 0);
 
         ali.cash("gold", 15 ether);
 
@@ -429,15 +434,15 @@ contract EndTest is DSSTest {
         ali.exit(gold.gemA, address(this), rmul(fix, 15 ether));
 
         // second dai redemption
-        claimToken.mint(address(bob), 3 ether);
-        bob.approveClaim(address(end), 3 ether);
+        claimToken.mint(address(bob), rad(3 ether));
+        bob.approveClaim(address(end), rad(3 ether));
         bob.pack(3 ether);
 
         // global checks:
         assertEq(vat.debt(), rad(18 ether));
         assertEq(vat.vice(), rad(18 ether));
         assertEq(vat.sin(address(vow)), rad(18 ether));
-        assertEq(claimToken.balanceOf(address(vow)), 18 ether);
+        assertEq(claimToken.balanceOf(address(bob)), 0);
 
         bob.cash("gold", 3 ether);
 
@@ -497,15 +502,15 @@ contract EndTest is DSSTest {
         assertTrue(end.fix("gold") != 0);
 
         // dai redemption
-        claimToken.mint(address(ali), 16 ether);
-        ali.approveClaim(address(end), 16 ether);
+        claimToken.mint(address(ali), rad(16 ether));
+        ali.approveClaim(address(end), rad(16 ether));
         ali.pack(16 ether);
 
         // global checks:
         assertEq(vat.debt(), rad(16 ether));
         assertEq(vat.vice(), rad(16 ether));
         assertEq(vat.sin(address(vow)), rad(16 ether));
-        assertEq(claimToken.balanceOf(address(vow)), 16 ether);
+        assertEq(claimToken.balanceOf(address(ali)), 0);
 
 
         ali.cash("gold", 16 ether);
@@ -578,8 +583,8 @@ contract EndTest is DSSTest {
         assertTrue(end.fix("gold") != 0);
 
         // first dai redemption
-        claimToken.mint(address(ali), 14 ether);
-        ali.approveClaim(address(end), 14 ether);
+        claimToken.mint(address(ali), rad(14 ether));
+        ali.approveClaim(address(end), rad(14 ether));
         ali.pack(14 ether);
 
         // global checks:
@@ -595,8 +600,8 @@ contract EndTest is DSSTest {
         ali.exit(gold.gemA, address(this), rmul(fix, 14 ether));
 
         // second dai redemption
-        claimToken.mint(address(bob), 16 ether);
-        bob.approveClaim(address(end), 16 ether);
+        claimToken.mint(address(bob), rad(16 ether));
+        bob.approveClaim(address(end), rad(16 ether));
         bob.pack(3 ether);
 
         // global checks:
@@ -653,9 +658,9 @@ contract EndTest is DSSTest {
         end.flow("gold");
         end.flow("coal");
 
-        claimToken.mint(address(ali), 1000 ether);
+        claimToken.mint(address(ali), rad(1000 ether));
         ali.approveClaim(address(end), type(uint256).max);
-        claimToken.mint(address(bob), 1000 ether);
+        claimToken.mint(address(bob), rad(1000 ether));
         bob.approveClaim(address(end), type(uint256).max);
 
         assertEq(vat.debt(),             rad(20 ether));

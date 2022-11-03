@@ -88,7 +88,9 @@ interface CureLike {
 }
 
 interface ClaimLike {
-    function transferFrom(address src, address dst, uint256 amount) external returns (bool);
+    function mint(address to, uint256 value) external;
+    function burn(address from, uint256 value) external;
+    function approve(address spender, uint256 value) external returns (bool);
 }
 
 /*
@@ -237,8 +239,8 @@ contract End {
 
     function file(bytes32 what, address data) external auth {
         require(live == 1, "End/not-live");
-        if (what == "vow")   vow = data;
-        else if (what == "pot")   pot = PotLike(data);
+        if (what == "vow") vow = data;
+        else if (what == "pot") pot = PotLike(data);
         else if (what == "spot") spot = SpotLike(data);
         else if (what == "cure") cure = CureLike(data);
         else if (what == "claim") claim = ClaimLike(data);
@@ -303,6 +305,8 @@ contract End {
         require(vat.dai(vow) == 0, "End/surplus-not-zero");
         require(block.timestamp >= when + wait, "End/wait-not-finished");
         debt = vat.debt() - cure.tell();
+        claim.mint(address(this), debt);
+        claim.approve(vow, type(uint256).max);
         emit Thaw();
     }
     function flow(bytes32 ilk) external {
@@ -317,7 +321,7 @@ contract End {
 
     function pack(uint256 wad) external {
         require(debt != 0, "End/debt-zero");
-        require(claim.transferFrom(msg.sender, vow, wad), "End/transfer-failed");
+        claim.burn(msg.sender, wad * RAY);
         bag[msg.sender] = bag[msg.sender] + wad;
         emit Pack(msg.sender, wad);
     }
