@@ -14,10 +14,10 @@ jobs:
         with:
           version: nightly
 
-      - name: Coverage
+      - name: Run Coverage
         run: forge coverage --report lcov
 
-      - name: Report Coverage
+      - name: Assure Coverage
         uses: zgosalvez/github-actions-report-lcov@v1
         with:
           coverage-files: ./lcov.info
