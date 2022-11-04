@@ -23,4 +23,5 @@ jobs:
       - name: Report Coverage
         uses: zgosalvez/github-actions-report-lcov@v1
         with:
+          coverage-files: ./lcov.info
           minimum-coverage: 100
