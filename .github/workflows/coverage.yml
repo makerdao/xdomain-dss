@@ -14,7 +14,10 @@ jobs:
         with:
           version: nightly
 
-      - name: Run Coverage
+      - name: Print Coverage Summary
+        run: forge coverage
+
+      - name: Download Coverage Report
         run: forge coverage --report lcov
 
       - name: Assure Coverage
