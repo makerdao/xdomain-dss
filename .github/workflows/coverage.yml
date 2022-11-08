@@ -21,4 +21,4 @@ jobs:
         uses: zgosalvez/github-actions-report-lcov@v1
         with:
           coverage-files: ./lcov.info
-          minimum-coverage: 100
+          minimum-coverage: 90
