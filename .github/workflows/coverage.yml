@@ -20,6 +20,11 @@ jobs:
       - name: Download Coverage Report
         run: forge coverage --report lcov
 
+      - name: Filter Coverage
+        run: |
+          sudo apt update && sudo apt install -y lcov
+          lcov --remove lcov.info '/src/test/*' --output-file lcov.info
+
       - name: Assure Coverage
         uses: zgosalvez/github-actions-report-lcov@v1
         with:
