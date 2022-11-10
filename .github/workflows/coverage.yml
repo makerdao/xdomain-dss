@@ -14,11 +14,8 @@ jobs:
         with:
           version: nightly
 
-      - name: Print Coverage Summary
-        run: forge coverage
-
-      - name: Download Coverage Report
-        run: forge coverage --report lcov
+      - name: Run Coverage
+        run: forge coverage --report summary --report lcov
 
       - name: Filter Coverage
         run: |
