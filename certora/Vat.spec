@@ -16,6 +16,7 @@ methods {
     rate(bytes32) returns (uint256) envfree
     sin(address) returns (uint256) envfree
     spot(bytes32) returns (uint256) envfree
+    surf() returns (int256) envfree
     urns(bytes32, address) returns (uint256, uint256) envfree
     vice() returns (uint256) envfree
     wards(address) returns (uint256) envfree
@@ -55,6 +56,7 @@ rule rely(address usr) {
     uint256 daiBefore = dai(anyUsr);
     uint256 sinBefore = sin(anyUsr);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
     uint256 liveBefore = live();
@@ -72,6 +74,7 @@ rule rely(address usr) {
     uint256 daiAfter = dai(anyUsr);
     uint256 sinAfter = sin(anyUsr);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -90,6 +93,7 @@ rule rely(address usr) {
     assert(daiAfter == daiBefore, "rely did not keep unchanged every dai[x]");
     assert(sinAfter == sinBefore, "rely did not keep unchanged every sin[x]");
     assert(debtAfter == debtBefore, "rely did not keep unchanged debt");
+    assert(surfAfter == surfBefore, "rely did not keep unchanged surf");
     assert(viceAfter == viceBefore, "rely did not keep unchanged vice");
     assert(LineAfter == LineBefore, "rely did not keep unchanged Line");
     assert(liveAfter == liveBefore, "rely did not keep unchanged live");
@@ -133,6 +137,7 @@ rule deny(address usr) {
     uint256 daiBefore = dai(anyUsr);
     uint256 sinBefore = sin(anyUsr);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
     uint256 liveBefore = live();
@@ -150,6 +155,7 @@ rule deny(address usr) {
     uint256 daiAfter = dai(anyUsr);
     uint256 sinAfter = sin(anyUsr);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -168,6 +174,7 @@ rule deny(address usr) {
     assert(daiAfter == daiBefore, "deny did not keep unchanged every dai[x]");
     assert(sinAfter == sinBefore, "deny did not keep unchanged every sin[x]");
     assert(debtAfter == debtBefore, "deny did not keep unchanged debt");
+    assert(surfAfter == surfBefore, "deny did not keep unchanged surf");
     assert(viceAfter == viceBefore, "deny did not keep unchanged vice");
     assert(LineAfter == LineBefore, "deny did not keep unchanged Line");
     assert(liveAfter == liveBefore, "deny did not keep unchanged live");
@@ -213,6 +220,7 @@ rule init(bytes32 ilk) {
     uint256 daiBefore = dai(anyUsr);
     uint256 sinBefore = sin(anyUsr);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
     uint256 liveBefore = live();
@@ -231,6 +239,7 @@ rule init(bytes32 ilk) {
     uint256 daiAfter = dai(anyUsr);
     uint256 sinAfter = sin(anyUsr);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -253,6 +262,7 @@ rule init(bytes32 ilk) {
     assert(daiAfter == daiBefore, "init did not keep unchanged every dai[x]");
     assert(sinAfter == sinBefore, "init did not keep unchanged every sin[x]");
     assert(debtAfter == debtBefore, "init did not keep unchanged debt");
+    assert(surfAfter == surfBefore, "init did not keep unchanged surf");
     assert(viceAfter == viceBefore, "init did not keep unchanged vice");
     assert(LineAfter == LineBefore, "init did not keep unchanged Line");
     assert(liveAfter == liveBefore, "init did not keep unchanged live");
@@ -296,6 +306,7 @@ rule file(bytes32 what, uint256 data) {
     uint256 daiBefore = dai(anyUsr);
     uint256 sinBefore = sin(anyUsr);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 liveBefore = live();
 
@@ -311,6 +322,7 @@ rule file(bytes32 what, uint256 data) {
     uint256 daiAfter = dai(anyUsr);
     uint256 sinAfter = sin(anyUsr);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -328,6 +340,7 @@ rule file(bytes32 what, uint256 data) {
     assert(daiAfter == daiBefore, "file did not keep unchanged every dai[x]");
     assert(sinAfter == sinBefore, "file did not keep unchanged every sin[x]");
     assert(debtAfter == debtBefore, "file did not keep unchanged debt");
+    assert(surfAfter == surfBefore, "file did not keep unchanged surf");
     assert(viceAfter == viceBefore, "file did not keep unchanged vice");
     assert(LineAfter == data, "file did not set Line");
     assert(liveAfter == liveBefore, "file did not keep unchanged live");
@@ -376,6 +389,7 @@ rule file_ilk(bytes32 ilk, bytes32 what, uint256 data) {
     uint256 daiBefore = dai(anyUsr);
     uint256 sinBefore = sin(anyUsr);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
     uint256 liveBefore = live();
@@ -394,6 +408,7 @@ rule file_ilk(bytes32 ilk, bytes32 what, uint256 data) {
     uint256 daiAfter = dai(anyUsr);
     uint256 sinAfter = sin(anyUsr);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -419,6 +434,7 @@ rule file_ilk(bytes32 ilk, bytes32 what, uint256 data) {
     assert(daiAfter == daiBefore, "file did not keep unchanged every dai[x]");
     assert(sinAfter == sinBefore, "file did not keep unchanged every sin[x]");
     assert(debtAfter == debtBefore, "file did not keep unchanged debt");
+    assert(surfAfter == surfBefore, "file did not keep unchanged surf");
     assert(viceAfter == viceBefore, "file did not keep unchanged vice");
     assert(LineAfter == LineBefore, "file did not keep unchanged Line");
     assert(liveAfter == liveBefore, "file did not keep unchanged live");
@@ -465,6 +481,7 @@ rule cage() {
     uint256 daiBefore = dai(anyUsr);
     uint256 sinBefore = sin(anyUsr);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
 
@@ -480,6 +497,7 @@ rule cage() {
     uint256 daiAfter = dai(anyUsr);
     uint256 sinAfter = sin(anyUsr);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -497,6 +515,7 @@ rule cage() {
     assert(daiAfter == daiBefore, "cage did not keep unchanged every dai[x]");
     assert(sinAfter == sinBefore, "cage did not keep unchanged every sin[x]");
     assert(debtAfter == debtBefore, "cage did not keep unchanged debt");
+    assert(surfAfter == surfBefore, "cage did not keep unchanged surf");
     assert(viceAfter == viceBefore, "cage did not keep unchanged vice");
     assert(LineAfter == LineBefore, "cage did not keep unchanged Line");
     assert(liveAfter == 0, "cage did not set live");
@@ -558,6 +577,7 @@ rule hope(address usr) {
     uint256 daiBefore = dai(anyUsr);
     uint256 sinBefore = sin(anyUsr);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
     uint256 liveBefore = live();
@@ -575,6 +595,7 @@ rule hope(address usr) {
     uint256 daiAfter = dai(anyUsr);
     uint256 sinAfter = sin(anyUsr);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -593,6 +614,7 @@ rule hope(address usr) {
     assert(daiAfter == daiBefore, "hope did not keep unchanged every dai[x]");
     assert(sinAfter == sinBefore, "hope did not keep unchanged every sin[x]");
     assert(debtAfter == debtBefore, "hope did not keep unchanged debt");
+    assert(surfAfter == surfBefore, "hope did not keep unchanged surf");
     assert(viceAfter == viceBefore, "hope did not keep unchanged vice");
     assert(LineAfter == LineBefore, "hope did not keep unchanged Line");
     assert(liveAfter == liveBefore, "hope did not keep unchanged live");
@@ -629,6 +651,7 @@ rule nope(address usr) {
     uint256 daiBefore = dai(anyUsr);
     uint256 sinBefore = sin(anyUsr);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
     uint256 liveBefore = live();
@@ -646,6 +669,7 @@ rule nope(address usr) {
     uint256 daiAfter = dai(anyUsr);
     uint256 sinAfter = sin(anyUsr);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -664,6 +688,7 @@ rule nope(address usr) {
     assert(daiAfter == daiBefore, "nope did not keep unchanged every dai[x]");
     assert(sinAfter == sinBefore, "nope did not keep unchanged every sin[x]");
     assert(debtAfter == debtBefore, "nope did not keep unchanged debt");
+    assert(surfAfter == surfBefore, "nope did not keep unchanged surf");
     assert(viceAfter == viceBefore, "nope did not keep unchanged vice");
     assert(LineAfter == LineBefore, "nope did not keep unchanged Line");
     assert(liveAfter == liveBefore, "nope did not keep unchanged live");
@@ -701,6 +726,7 @@ rule slip(bytes32 ilk, address usr, int256 wad) {
     uint256 daiBefore = dai(anyUsr);
     uint256 sinBefore = sin(anyUsr);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
     uint256 liveBefore = live();
@@ -718,6 +744,7 @@ rule slip(bytes32 ilk, address usr, int256 wad) {
     uint256 daiAfter = dai(anyUsr);
     uint256 sinAfter = sin(anyUsr);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -736,6 +763,7 @@ rule slip(bytes32 ilk, address usr, int256 wad) {
     assert(daiAfter == daiBefore, "slip did not keep unchanged every dai[x]");
     assert(sinAfter == sinBefore, "slip did not keep unchanged every sin[x]");
     assert(debtAfter == debtBefore, "slip did not keep unchanged debt");
+    assert(surfAfter == surfBefore, "slip did not keep unchanged surf");
     assert(viceAfter == viceBefore, "slip did not keep unchanged vice");
     assert(LineAfter == LineBefore, "slip did not keep unchanged Line");
     assert(liveAfter == liveBefore, "slip did not keep unchanged live");
@@ -781,6 +809,7 @@ rule flux(bytes32 ilk, address src, address dst, uint256 wad) {
     uint256 daiBefore = dai(anyUsr);
     uint256 sinBefore = sin(anyUsr);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
     uint256 liveBefore = live();
@@ -799,6 +828,7 @@ rule flux(bytes32 ilk, address src, address dst, uint256 wad) {
     uint256 daiAfter = dai(anyUsr);
     uint256 sinAfter = sin(anyUsr);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -819,6 +849,7 @@ rule flux(bytes32 ilk, address src, address dst, uint256 wad) {
     assert(daiAfter == daiBefore, "flux did not keep unchanged every dai[x]");
     assert(sinAfter == sinBefore, "flux did not keep unchanged every sin[x]");
     assert(debtAfter == debtBefore, "flux did not keep unchanged debt");
+    assert(surfAfter == surfBefore, "flux did not keep unchanged surf");
     assert(viceAfter == viceBefore, "flux did not keep unchanged vice");
     assert(LineAfter == LineBefore, "flux did not keep unchanged Line");
     assert(liveAfter == liveBefore, "flux did not keep unchanged live");
@@ -868,6 +899,7 @@ rule move(address src, address dst, uint256 rad) {
     uint256 daiOtherBefore = dai(otherUsr);
     uint256 sinBefore = sin(anyUsr);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
     uint256 liveBefore = live();
@@ -886,6 +918,7 @@ rule move(address src, address dst, uint256 rad) {
     uint256 daiOtherAfter = dai(otherUsr);
     uint256 sinAfter = sin(anyUsr);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -906,6 +939,7 @@ rule move(address src, address dst, uint256 rad) {
     assert(daiOtherAfter == daiOtherBefore, "move did not keep unchanged the rest of dai[x]");
     assert(sinAfter == sinBefore, "move did not keep unchanged every sin[x]");
     assert(debtAfter == debtBefore, "move did not keep unchanged debt");
+    assert(surfAfter == surfBefore, "move did not keep unchanged surf");
     assert(viceAfter == viceBefore, "move did not keep unchanged vice");
     assert(LineAfter == LineBefore, "move did not keep unchanged Line");
     assert(liveAfter == liveBefore, "move did not keep unchanged live");
@@ -964,6 +998,7 @@ rule frob(bytes32 i, address u, address v, address w, int256 dink, int256 dart) 
     uint256 daiBefore = dai(w);
     uint256 daiOtherBefore = dai(otherUsrW);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 sinBefore = sin(anyUsr);
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
@@ -986,6 +1021,7 @@ rule frob(bytes32 i, address u, address v, address w, int256 dink, int256 dart) 
     uint256 daiAfter = dai(w);
     uint256 daiOtherAfter = dai(otherUsrW);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 sinAfter = sin(anyUsr);
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
@@ -1013,6 +1049,7 @@ rule frob(bytes32 i, address u, address v, address w, int256 dink, int256 dart) 
     assert(daiOtherAfter == daiOtherBefore, "frob did not keep unchanged rest of dai[x]");
     assert(sinAfter == sinBefore, "frob did not keep unchanged every sin[x]");
     assert(to_mathint(debtAfter) == to_mathint(debtBefore) + to_mathint(rateBefore) * to_mathint(dart), "frob did not set debt");
+    assert(surfAfter == surfBefore, "frob did not keep unchanged surf");
     assert(viceAfter == viceBefore, "frob did not keep unchanged vice");
     assert(LineAfter == LineBefore, "frob did not keep unchanged Line");
     assert(liveAfter == liveBefore, "frob did not keep unchanged live");
@@ -1120,6 +1157,7 @@ rule fork(bytes32 ilk, address src, address dst, int256 dink, int256 dart) {
     uint256 daiBefore = dai(anyUsr);
     uint256 sinBefore = sin(anyUsr);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
     uint256 liveBefore = live();
@@ -1140,6 +1178,7 @@ rule fork(bytes32 ilk, address src, address dst, int256 dink, int256 dart) {
     uint256 daiAfter = dai(anyUsr);
     uint256 sinAfter = sin(anyUsr);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -1163,6 +1202,7 @@ rule fork(bytes32 ilk, address src, address dst, int256 dink, int256 dart) {
     assert(daiAfter == daiBefore, "fork did not keep unchanged every dai[x]");
     assert(sinAfter == sinBefore, "fork did not keep unchanged every sin[x]");
     assert(debtAfter == debtBefore, "fork did not keep unchanged debt");
+    assert(surfAfter == surfBefore, "fork did not keep unchanged surf");
     assert(viceAfter == viceBefore, "fork did not keep unchanged vice");
     assert(LineAfter == LineBefore, "fork did not keep unchanged Line");
     assert(liveAfter == liveBefore, "fork did not keep unchanged live");
@@ -1260,6 +1300,7 @@ rule grab(bytes32 i, address u, address v, address w, int256 dink, int256 dart) 
     uint256 sinBefore = sin(w);
     uint256 sinOtherBefore = sin(otherUsrW);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
     uint256 liveBefore = live();
@@ -1282,6 +1323,7 @@ rule grab(bytes32 i, address u, address v, address w, int256 dink, int256 dart) 
     uint256 sinAfter = sin(w);
     uint256 sinOtherAfter = sin(otherUsrW);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -1308,6 +1350,7 @@ rule grab(bytes32 i, address u, address v, address w, int256 dink, int256 dart) 
     assert(to_mathint(sinAfter) == to_mathint(sinBefore) - to_mathint(rateBefore) * to_mathint(dart), "grab did not set sin[w]");
     assert(sinOtherAfter == sinOtherBefore, "grab did not keep unchanged the rest of sin[x]");
     assert(debtAfter == debtBefore, "grab did not keep unchanged debt");
+    assert(surfAfter == surfBefore, "grab did not keep unchanged surf");
     assert(to_mathint(viceAfter) == to_mathint(viceBefore) - to_mathint(rateBefore) * to_mathint(dart), "grab did not set vice");
     assert(LineAfter == LineBefore, "grab did not keep unchanged Line");
     assert(liveAfter == liveBefore, "grab did not keep unchanged live");
@@ -1379,6 +1422,7 @@ rule heal(uint256 rad) {
     uint256 sinSenderBefore = sin(e.msg.sender);
     uint256 sinOtherBefore = sin(otherUsr);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
     uint256 liveBefore = live();
@@ -1397,6 +1441,7 @@ rule heal(uint256 rad) {
     uint256 sinSenderAfter = sin(e.msg.sender);
     uint256 sinOtherAfter = sin(otherUsr);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -1416,6 +1461,7 @@ rule heal(uint256 rad) {
     assert(sinSenderAfter == sinSenderBefore - rad, "heal did not set sin[sender]");
     assert(sinOtherAfter == sinOtherBefore, "heal did not keep unchanged the rest of sin[x]");
     assert(debtAfter == debtBefore - rad, "heal did not set debt");
+    assert(surfAfter == surfBefore, "heal did not keep unchanged surf");
     assert(viceAfter == viceBefore - rad, "heal did not set vice");
     assert(LineAfter == LineBefore, "heal did not keep unchanged Line");
     assert(liveAfter == liveBefore, "heal did not keep unchanged live");
@@ -1470,6 +1516,7 @@ rule suck(address u, address v, uint256 rad) {
     uint256 sinUBefore = sin(u);
     uint256 sinOtherBefore = sin(otherUsrU);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
     uint256 liveBefore = live();
@@ -1488,6 +1535,7 @@ rule suck(address u, address v, uint256 rad) {
     uint256 sinUAfter = sin(u);
     uint256 sinOtherAfter = sin(otherUsrU);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -1507,6 +1555,7 @@ rule suck(address u, address v, uint256 rad) {
     assert(sinUAfter == sinUBefore + rad, "suck did not set sin[u]");
     assert(sinOtherAfter == sinOtherBefore, "suck did not keep unchanged the rest of sin[x]");
     assert(debtAfter == debtBefore + rad, "suck did not set debt");
+    assert(surfAfter == surfBefore, "suck did not keep unchanged surf");
     assert(viceAfter == viceBefore + rad, "suck did not set vice");
     assert(LineAfter == LineBefore, "suck did not keep unchanged Line");
     assert(liveAfter == liveBefore, "suck did not keep unchanged live");
@@ -1543,6 +1592,92 @@ rule suck_revert(address u, address v, uint256 rad) {
                            revert4 || revert5 || revert6, "Revert rules are not covering all the cases");
 }
 
+// Verify correct storage changes for non reverting swell
+rule swell(address u, int256 rad) {
+    env e;
+
+    address otherUsr;
+    require(otherUsr != u);
+    address anyUsr; address anyUsr2; bytes32 anyIlk;
+
+    uint256 wardBefore = wards(anyUsr);
+    uint256 canBefore = can(anyUsr, anyUsr2);
+    uint256 ArtBefore; uint256 rateBefore; uint256 spotBefore; uint256 lineBefore; uint256 dustBefore;
+    ArtBefore, rateBefore, spotBefore, lineBefore, dustBefore = ilks(anyIlk);
+    uint256 inkBefore; uint256 artBefore;
+    inkBefore, artBefore = urns(anyIlk, anyUsr);
+    uint256 gemBefore = gem(anyIlk, anyUsr);
+    uint256 daiBefore = dai(u);
+    uint256 daiOtherBefore = dai(otherUsr);
+    uint256 sinBefore = sin(anyUsr);
+    uint256 debtBefore = debt();
+    int256 surfBefore = surf();
+    uint256 viceBefore = vice();
+    uint256 LineBefore = Line();
+    uint256 liveBefore = live();
+
+    swell(e, u, rad);
+
+    uint256 wardAfter = wards(anyUsr);
+    uint256 canAfter = can(anyUsr, anyUsr2);
+    uint256 ArtAfter; uint256 rateAfter; uint256 spotAfter; uint256 lineAfter; uint256 dustAfter;
+    ArtAfter, rateAfter, spotAfter, lineAfter, dustAfter = ilks(anyIlk);
+    uint256 inkAfter; uint256 artAfter;
+    inkAfter, artAfter = urns(anyIlk, anyUsr);
+    uint256 gemAfter = gem(anyIlk, anyUsr);
+    uint256 daiAfter = dai(u);
+    uint256 daiOtherAfter = dai(otherUsr);
+    uint256 sinAfter = sin(anyUsr);
+    uint256 debtAfter = debt();
+    int256 surfAfter = surf();
+    uint256 viceAfter = vice();
+    uint256 LineAfter = Line();
+    uint256 liveAfter = live();
+
+    assert(wardAfter == wardBefore, "swell did not keep unchanged every wards[x]");
+    assert(canAfter == canBefore, "swell did not keep unchanged every can[x][y]");
+    assert(ArtAfter == ArtBefore, "swell did not keep unchanged every ilks[i].Art");
+    assert(rateAfter == rateBefore, "swell did not keep unchanged every ilks[x].rate");
+    assert(spotAfter == spotBefore, "swell did not keep unchanged every ilks[i].spot");
+    assert(lineAfter == lineBefore, "swell did not keep unchanged every ilks[i].line");
+    assert(dustAfter == dustBefore, "swell did not keep unchanged every ilks[i].dust");
+    assert(inkAfter == inkBefore, "swell did not keep unchanged every urns[x].ink");
+    assert(artAfter == artBefore, "swell did not keep unchanged every urns[x].art");
+    assert(gemAfter == gemBefore, "swell did not keep unchanged every gem[x][y]");
+    assert(to_mathint(daiAfter) == to_mathint(daiBefore) + to_mathint(rad), "swell did not set dai[u]");
+    assert(daiOtherAfter == daiOtherBefore, "swell did not keep unchanged the rest of dai[x]");
+    assert(sinAfter == sinBefore, "swell did not keep unchanged every sin[x]");
+    assert(debtAfter == debtBefore, "swell did not keep unchanged debt");
+    assert(to_mathint(surfAfter) == to_mathint(surfBefore) + to_mathint(rad), "swell did not set surf");
+    assert(viceAfter == viceBefore, "swell did not keep unchanged vice");
+    assert(LineAfter == LineBefore, "swell did not keep unchanged Line");
+    assert(liveAfter == liveBefore, "swell did not keep unchanged live");
+}
+
+// Verify revert rules on swell
+rule swell_revert(address u, int256 rad) {
+    env e;
+
+    uint256 ward = wards(e.msg.sender);
+    uint256 dai = dai(u);
+    int256 surf = surf();
+
+    swell@withrevert(e, u, rad);
+
+    bool revert1 = e.msg.value > 0;
+    bool revert2 = ward != 1;
+    bool revert3 = to_mathint(dai) + to_mathint(rad) < 0 || to_mathint(dai) + to_mathint(rad) > max_uint256;
+    bool revert4 = to_mathint(surf) + to_mathint(rad) > max_int256() || to_mathint(surf) + to_mathint(rad) < min_int256();
+
+    assert(revert1 => lastReverted, "revert1 failed");
+    assert(revert2 => lastReverted, "revert2 failed");
+    assert(revert3 => lastReverted, "revert3 failed");
+    assert(revert4 => lastReverted, "revert4 failed");
+
+    assert(lastReverted => revert1 || revert2 || revert3 ||
+                           revert4, "Revert rules are not covering all the cases");
+}
+
 // Verify correct storage changes for non reverting fold
 rule fold(bytes32 i, address u, int256 rate_) {
     env e;
@@ -1566,6 +1701,7 @@ rule fold(bytes32 i, address u, int256 rate_) {
     uint256 daiOtherBefore = dai(otherUsr);
     uint256 sinBefore = sin(anyUsr);
     uint256 debtBefore = debt();
+    int256 surfBefore = surf();
     uint256 viceBefore = vice();
     uint256 LineBefore = Line();
     uint256 liveBefore = live();
@@ -1585,6 +1721,7 @@ rule fold(bytes32 i, address u, int256 rate_) {
     uint256 daiOtherAfter = dai(otherUsr);
     uint256 sinAfter = sin(anyUsr);
     uint256 debtAfter = debt();
+    int256 surfAfter = surf();
     uint256 viceAfter = vice();
     uint256 LineAfter = Line();
     uint256 liveAfter = live();
@@ -1608,6 +1745,7 @@ rule fold(bytes32 i, address u, int256 rate_) {
     assert(daiOtherAfter == daiOtherBefore, "fold did not keep unchanged the rest of dai[x]");
     assert(sinAfter == sinBefore, "fold did not keep unchanged every sin[x]");
     assert(to_mathint(debtAfter) == to_mathint(debtBefore) + to_mathint(ArtBefore) * to_mathint(rate_), "fold did not set debt");
+    assert(surfAfter == surfBefore, "fold did not keep unchanged surf");
     assert(viceAfter == viceBefore, "fold did not keep unchanged vice");
     assert(LineAfter == LineBefore, "fold did not keep unchanged Line");
     assert(liveAfter == liveBefore, "fold did not keep unchanged live");

@@ -44,6 +44,7 @@ contract Vat {
     mapping (address => uint256)                        public sin;  // [rad]
 
     uint256 public debt;  // Total Dai Issued    [rad]
+    int256  public surf;  // Total Dai Bridged   [rad]
     uint256 public vice;  // Total Unbacked Dai  [rad]
     uint256 public Line;  // Total Debt Ceiling  [rad]
     uint256 public live;  // Active Flag
@@ -65,6 +66,7 @@ contract Vat {
     event Grab(bytes32 indexed i, address indexed u, address v, address w, int256 dink, int256 dart);
     event Heal(address indexed u, uint256 rad);
     event Suck(address indexed u, address indexed v, uint256 rad);
+    event Swell(address indexed u, int256 rad);
     event Fold(bytes32 indexed i, address indexed u, int256 rate);
 
     modifier auth {
@@ -318,6 +320,14 @@ contract Vat {
         debt   = debt   + rad;
 
         emit Suck(u, v, rad);
+    }
+
+    // --- Bridged DAI ---
+    function swell(address u, int256 rad) external auth {
+        dai[u] = _add(dai[u], rad);
+        surf   = surf + rad;
+
+        emit Swell(u, rad);
     }
 
     // --- Rates ---
